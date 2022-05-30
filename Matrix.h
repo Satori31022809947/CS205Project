@@ -137,4 +137,4 @@ class Matrix {
 };
 
 } // namespace usr
-#endif Matrix_H_
+#endif

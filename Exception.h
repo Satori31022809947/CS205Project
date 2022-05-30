@@ -16,22 +16,14 @@ class Exception: public std::exception
         std::string msg;
         Exception();
         Exception(const char* _err, const std::string& _func, const std::string& _file, const int _line)
-        : err(_err), func(_func), file(_file), line(_line) {};
-        virtual ~Exception() throw();
-        virtual const char* what() const throw();
+        : err(_err), func(_func), file(_file), line(_line)
+        {
+            std::stringstream ss;
+            ss << _err << "\n" << "\tat " << _func << "(" << _file << ":" << _line << ")";
+            msg = ss.str();
+        }
+        virtual inline const char* what() const throw() {return msg.c_str();}
 };
-
-Exception::Exception(const char* _err, const std::string& _func, const std::string& _file, const int _line)
-{
-    std::stringstream ss;
-    ss << _err << "\n" << "\tat " << _func << "(" << _file << ":" << _line << ")";
-    msg = ss.str();
-}
-
-const char* Exception::what() const throw()
-{
-    return msg.c_str();
-}
 
 class InvalidArgsException: public Exception 
 {
@@ -61,10 +53,10 @@ class ArithmeticException: public Exception
         : Exception(_err, _func, _file, _line) {};
 };
 
-class NullPointerException: public Exception
+class EmptyMatrixException: public Exception
 {
     public:
-        NullPointerException(const char* _err, const std::string& _func, const std::string& _file, const int _line)
+        EmptyMatrixException(const char* _err, const std::string& _func, const std::string& _file, const int _line)
         : Exception(_err, _func, _file, _line) {};
 };
 
