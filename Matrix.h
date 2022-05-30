@@ -22,9 +22,7 @@ class Matrix {
         T** a;
 
         Matrix Addition(const Matrix& src1, const Matrix& src2) const;
-        Matrix Addition(const Matrix& src1, const T& src2) const;
         Matrix Subtraction(const Matrix& src1, const Matrix& src2) const;
-        Matrix Subtraction(const Matrix& src1, const T& src2) const;
         Matrix Multiplication(const Matrix& src1, const Matrix& src2) const;
         Matrix Multiplication(const Matrix& src1, const T& src2) const;
         Matrix Strassen(const Matrix& src1, const Matrix& src2) const;
@@ -44,6 +42,9 @@ class Matrix {
          * @description: Shallow copy 
          */
         Matrix(const Matrix&);
+        /** @brief destructor
+         *  release if is not empty
+         */
         ~Matrix();
 
         Matrix operator+(const Matrix& b);
@@ -55,7 +56,7 @@ class Matrix {
         Matrix operator/(const T& b);
         friend Matrix operator/(const T& a, const Matrix& b);
         Matrix operator^(const int b);
-        Matrix operator=(T *);
+        Matrix operator=(const T *);
 		Matrix& operator+=(const Matrix& m);
 		Matrix& operator-=(const Matrix& m);
 		Matrix& operator*=(const Matrix& m);
@@ -70,19 +71,19 @@ class Matrix {
         /**
          * @description: return true if is no data
          */
-        bool isEmpty()const;
+        static inline bool isEmpty()const;
 
         /**
          * @description: return true if is vector
          * @return {*}
          */
-        bool isVector()const;
+        static inline bool isVector()const;
 
         /**
          * @description: return true if is square
          * @return {*}
          */
-        bool isSquare()const; 
+        static inline bool isSquare()const; 
 
         /**
          * @description: return true if can inverse
@@ -117,7 +118,7 @@ class Matrix {
         Matrix inverse()const;
         Matrix transposition()const;
         Martix hermite()const;
-        Matrix reshape(int _row, int _col)const;
+        Matrix reshape(const int _row, const int _col)const;
         Matrix slice(const Range& row, const int col)const;
         Matrix convolute(const Matrix& kernel)const;
 
@@ -126,8 +127,8 @@ class Matrix {
          */
         Matrix clone()const;
 
-        /**
-         * @description: free data
+        /** @brief Free data
+         *  Set data pointer as nullptr after deleting 
          */
         void release();
 
