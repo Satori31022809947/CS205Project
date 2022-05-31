@@ -18,8 +18,7 @@ class Matrix {
     private:
         int col;
         int row;
-
-        T** a;
+        T** data;
 
         Matrix Addition(const Matrix& src1, const Matrix& src2) const;
         Matrix Subtraction(const Matrix& src1, const Matrix& src2) const;
@@ -47,6 +46,39 @@ class Matrix {
          */
         ~Matrix();
 
+        inline int getRow()const {return row;}
+        inline int getCol()const {return col;}
+        
+        /** 
+         * return true if the matrix is empty (data is equal to nullptr)
+         */
+        inline bool isEmpty()const;
+
+        /**
+         * return true if the matrix is a vector
+         */
+        inline bool isVector()const;
+
+        /**
+         * return true if the matrix is square
+         */
+        inline bool isSquare()const; 
+
+        /**
+         * return true if the matrix is invertible
+         */
+        bool canInverse()const;
+
+        /**
+         * @description: Deep copy
+         */
+        Matrix clone()const;
+
+        /** @brief Free data
+         *  Set data pointer as nullptr after deleting 
+         */
+        inline void release();
+
         Matrix operator+(const Matrix& b);
         Matrix operator-(const Matrix& b);
         Matrix operator*(const Matrix& b);
@@ -56,39 +88,19 @@ class Matrix {
         Matrix operator/(const T& b);
         friend Matrix operator/(const T& a, const Matrix& b);
         Matrix operator^(const int b);
-        Matrix operator=(const T *);
+        Matrix operator=(const Matrix& m);
 		Matrix& operator+=(const Matrix& m);
 		Matrix& operator-=(const Matrix& m);
 		Matrix& operator*=(const Matrix& m);
         Matrix& operator*=(const T t);
         bool operator==(const Matrix& m)const;
-        T* operator[](int i){ return matrix + i*col; }
+        T* operator[](int i){ return data + i*col; }
         void* operator new(size_t sz, char* filename, int line);
         void* operator new[](size_t sz, char* filename, int line);
         void operator delete(void* p);
         void operator delete[](void* p);
-        
-        /**
-         * @description: return true if is no data
-         */
-        static inline bool isEmpty()const;
-
-        /**
-         * @description: return true if is vector
-         * @return {*}
-         */
-        static inline bool isVector()const;
-
-        /**
-         * @description: return true if is square
-         * @return {*}
-         */
-        static inline bool isSquare()const; 
-
-        /**
-         * @description: return true if can inverse
-         */
-        bool canInverse()const;
+        friend istream& operator>>(istream&, Matrix&)const;
+		friend ostream& operator<<(ostream&, Matrix&)const;
 
         T determinant()const;
         int rank()const;
@@ -116,24 +128,11 @@ class Matrix {
         Matrix eigenVector()const;
         Matrix subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
         Matrix inverse()const;
-        Matrix transposition()const;
+        Matrix transpoe()const;
         Martix hermite()const;
         Matrix reshape(const int _row, const int _col)const;
         Matrix slice(const Range& row, const int col)const;
         Matrix convolute(const Matrix& kernel)const;
-
-        /**
-         * @description: Deep copy
-         */
-        Matrix clone()const;
-
-        /** @brief Free data
-         *  Set data pointer as nullptr after deleting 
-         */
-        void release();
-
-        friend istream& operator>>(istream&, Matrix&)const;
-		friend ostream& operator<<(ostream&, Matrix&)const;
 };
 
 } // namespace usr
