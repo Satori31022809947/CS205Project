@@ -8,7 +8,9 @@
  */
 #ifndef Matrix_H_
 #define Matrix_H_
+#include <iostream>
 #include "Range.h"
+#include "Exception.h"
 namespace usr
 {
 
@@ -16,8 +18,8 @@ template <class T>
 
 class Matrix {
     private:
-        int col;
-        int row;
+        uint32 col;
+        uint32 row;
         T** data;
 
         Matrix Addition(const Matrix& src1, const Matrix& src2) const;
@@ -27,7 +29,6 @@ class Matrix {
         Matrix Strassen(const Matrix& src1, const Matrix& src2) const;
         Matrix Division(const Matrix& src1, const Matrix& src2) const;
         Matrix Division(const Matrix& src1, const T& src2) const;
-        Matrix Division(const T& src1, const Matrix& src2) const;
 
     public:
         /**
@@ -36,7 +37,7 @@ class Matrix {
          * @param {int} row
          * @return {*}
          */
-        Matrix(int row=0,int col=0);
+        Matrix(uint32 row=1,uint32 col=1);
         /** 
          * @description: Shallow copy 
          */
@@ -46,28 +47,28 @@ class Matrix {
          */
         ~Matrix();
 
-        inline int getRow()const {return row;}
-        inline int getCol()const {return col;}
+        inline uint32 getRow()const {return row;}
+        inline uint32 getCol()const {return col;}
         
         /** 
          * return true if the matrix is empty (data is equal to nullptr)
          */
-        inline bool isEmpty()const;
+        inline bool isEmpty()const {return data==nullptr};
 
         /**
          * return true if the matrix is a vector
          */
-        inline bool isVector()const;
+        inline bool isVector()const {return row==1||col==1};
 
         /**
          * return true if the matrix is square
          */
-        inline bool isSquare()const; 
+        inline bool isSquare()const {return row==col;}; 
 
         /**
          * return true if the matrix is invertible
          */
-        bool canInverse()const;
+        inline bool canInverse()const {};
 
         /**
          * @description: Deep copy
@@ -86,7 +87,6 @@ class Matrix {
         friend Matrix operator*(const T& a, const Matrix& b);    
         Matrix operator/(const Matrix& b);
         Matrix operator/(const T& b);
-        friend Matrix operator/(const T& a, const Matrix& b);
         Matrix operator^(const int b);
         Matrix operator=(const Matrix& m);
 		Matrix& operator+=(const Matrix& m);
@@ -94,7 +94,7 @@ class Matrix {
 		Matrix& operator*=(const Matrix& m);
         Matrix& operator*=(const T t);
         bool operator==(const Matrix& m)const;
-        T* operator[](int i){ return data + i*col; }
+        T* operator[](uint32 i){ return data + i*col; }
         void* operator new(size_t sz, char* filename, int line);
         void* operator new[](size_t sz, char* filename, int line);
         void operator delete(void* p);
@@ -103,7 +103,7 @@ class Matrix {
 		friend ostream& operator<<(ostream&, Matrix&)const;
 
         T determinant()const;
-        int rank()const;
+        uint32 rank()const;
         T trace()const;
         T max(const Range &row=Range::all(), const Range &col=Range::all())const;
         T min(const Range &row=Range::all(), const Range &col=Range::all())const;
@@ -130,10 +130,403 @@ class Matrix {
         Matrix inverse()const;
         Matrix transpoe()const;
         Martix hermite()const;
-        Matrix reshape(const int _row, const int _col)const;
-        Matrix slice(const Range& row, const int col)const;
+        Matrix reshape(const uint32 _row, const uint32 _col)const;
+        Matrix slice(const Range& row, const uint32 col)const;
         Matrix convolute(const Matrix& kernel)const;
 };
+
+template <class T>
+Matrix<T>::Matrix(uint32 _row, uint32 _col)
+{
+    if (_row==0 || _col==0)
+        throw(InvalidArgsException("row or col can not be zero", __func__, __FILE__, __LINE__));
+    row = _row, col = _col;
+    data = new T* [row];
+    for (int i = 0; i < col; i++)
+        data[i] = new T[col];
+}
+
+template <class T>
+Matrix<T>::Matrix(const Matrix<T>& m)
+{
+    row = m.row, col = m.col;
+    data = m.data;
+}
+
+template <class T>
+Matrix<T>::~Matrix()
+{
+    if (!this->isEmpty())
+        release();
+}
+
+template <class T>
+inline void Matrix<T>::release()
+{
+    for (int i = 0; i < row; i++)
+        delete[] data[i];
+    delete[] data;
+    data = nullptr;
+}
+
+template <class T>
+Matrix<T> Matrix<T>::clone() const
+{
+    Matrix<T> m(row, col);
+    for (int i = 0; i < row; i++)
+        for (int j = 0; j < col; j++)
+            m[i][j] = this->data[i][j];
+    return m;
+}
+
+template <class T>
+Matrix<T> Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) const
+{
+    try
+    {
+        if (src1.isEmpty() || src2.isEmpty())
+            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+        else if (src1.getRow()!=src2.getRow() || src1.getCol()!= src2.getCol())
+            throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__)); 
+        else
+        {
+            uint32 r = src1.getRow(), c = src1.getCol();
+            Matrix<T> rst(r, c);
+            for (int i = 0; i < r; i++)
+                for (int j = 0; j < c; j++)
+                    rst[i][j] = src1[i][j] + src2[i][j];
+            return rst;
+        }
+    }
+    catch(const EmptyMatrixException& e)
+    {
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const SizeMismatchException& e)
+    {
+        std::cerr << "SizeMismatchException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return Matrix<T>();
+}
+
+template <class T>
+Matrix<T> Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) const
+{
+    try
+    {
+        if (src1.isEmpty() || src2.isEmpty())
+            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+        else if (src1.getRow()!=src2.getRow() || src1.getCol()!= src2.getCol())
+            throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__)); 
+        else
+        {
+            uint32 r = src1.getRow(), c = src1.getCol();
+            Matrix<T> rst(r, c);
+            for (int i = 0; i < r; i++)
+                for (int j = 0; j < c; j++)
+                    rst[i][j] = src1[i][j] - src2[i][j];
+            return rst;
+        }
+    }
+    catch(const EmptyMatrixException& e)
+    {
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const SizeMismatchException& e)
+    {
+        std::cerr << "SizeMismatchException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return Matrix<T>();
+}
+
+template <class T>
+Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src2) const
+{
+    try
+    {
+        if (src1.isEmpty() || src2.isEmpty())
+            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+        else if (src1.getCol() != src2.getRow())
+            throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__));
+        else
+        {
+            uint32 r = src1.getRow(), c = src2.getCol();
+            Matrix<T> rst(r, c);
+            /* TODO */
+            return rst;
+        }
+    }
+    catch(const EmptyMatrixException& e)
+    {
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const SizeMismatchException& e)
+    {
+        std::cerr << "SizeMismatchException: " << e.what() << '\n';
+    }
+    catch(const ArithmeticException& e)
+    {
+        std::cerr << "ArithmeticException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return Matrix<T>();
+}
+
+template <class T>
+Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
+{
+    try
+    {
+        if (src1.isEmpty())
+            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+        else
+        {
+            uint32 r = src1.getRow(), c = src1.getCol();
+            Matrix<T> rst(r, c);
+            for (int i = 0; i < r; i++)
+                for (int j = 0; j < c; j++)
+                    rst[i][j] = src1[i][j] * src2;
+            return rst;
+        }
+    }
+    catch(const EmptyMatrixException& e)
+    {
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return Matrix<T>();
+}
+
+template <class T>
+Matrix<T> Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) const
+{
+
+}
+
+template <class T>
+Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) const
+{
+    try
+    {
+        if (src1.isEmpty() || src2.isEmpty())
+            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+        else if (!src1.isSquare() || !src2.isSquare())
+            throw(ArithmeticException("Not square matrix", __func__, __FILE__, __LINE__));
+        else if (src1.getRow() == src2.getRow())
+            throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__));
+        else if (!src2.canInverse())
+            throw(ArithmeticException("Not invertible matrix", __func__, __FILE__, __LINE__));
+        else
+        {
+            Matrix<T> inv = src2.inverse();
+            Matrix<T> rst = src1 * inv;
+            return rst;
+        }
+    }
+    catch(const EmptyMatrixException& e)
+    {
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const SizeMismatchException& e)
+    {
+        std::cerr << "SizeMismatchException: " << e.what() << '\n';
+    }
+    catch(const ArithmeticException& e)
+    {
+        std::cerr << "ArithmeticException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return Matrix<T>();
+}
+
+template <class T>
+Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
+{
+    try
+    {
+        if (src1.isEmpty())
+            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+        else if (src2 == 0)
+            throw(ArithmeticException("Divide by Zero", __func__, __FILE__, __LINE__));
+        else
+        {
+            uint32 r = src1.getRow(), c = src1.getCol();
+            Matrix<T> rst(r, c);
+            for (int i = 0; i < r; i++)
+                for (int j = 0; j < c; j++)
+                    rst[i][j] = src1[i][j] / src2;
+            return rst;
+        }
+    }
+    catch(const EmptyMatrixException& e)
+    {
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const ArithmeticException& e)
+    {
+        std::cerr << "ArithmeticException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return Matrix<T>();
+}
+
+template <class T>
+Matrix<T> Matrix<T>::operator+(const Matrix<T>& m)
+{
+    return Addition(*this, m);
+}
+
+template <class T>
+Matrix<T> Matrix<T>::operator-(const Matrix<T>& m)
+{
+    return Subtraction(*this, m);
+}
+
+template <class T>
+Matrix<T> Matrix<T>::operator*(const Matrix<T>& m)
+{
+    return Multiplication(*this, m);
+}
+
+template <class T>
+Matrix<T> Matrix<T>::operator*(const T& a)
+{
+    return Multiplication(*this, a);
+}
+
+template <class T>
+Matrix<T> operator*(const T& a, const Matrix<T>& b)
+{
+    return b*a;
+}    
+
+template <class T>
+Matrix<T> Matrix<T>::operator/(const Matrix<T>& m)
+{
+    return Division(*this, m);
+}
+
+template <class T>
+Matrix<T> Matrix<T>::operator/(const T& a)
+{
+    return Division(*this, a);
+}
+
+template <class T>
+Matrix<T> Matrix<T>::operator^(const int b)
+{
+
+}
+
+template <class T>
+Matrix<T> Matrix<T>::operator=(const Matrix<T>& m)
+{
+
+}
+
+template <class T>
+Matrix<T>& Matrix<T>::operator+=(const Matrix<T>& m)
+{
+
+}
+
+template <class T>
+Matrix<T>& Matrix<T>::operator-=(const Matrix<T>& m)
+{
+
+}
+
+template <class T>
+Matrix<T>& Matrix<T>::operator*=(const Matrix<T>& m)
+{
+
+}
+
+template <class T>
+Matrix<T>& Matrix<T>::operator*=(const T t)
+{
+
+}
+
+template <class T>
+bool Matrix<T>::operator==(const Matrix<T>& m)const
+{
+
+}
+
+
+
+template <class T>
+T Matrix<T>::max(const Range &row, const Range &col)const
+{
+    try
+    {
+        if (row.empty() || col.empty())
+            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+        else if (row.start >= getRow() || col.start >= getCol())
+            throw(RangeOutOfBoundException("range is out of bound", __func__, __FILE__, __LINE__));
+        else
+        {
+            T m = data[row.start][col.start];
+            for (int i = row.start; i < std::min(getRow(), row.end); i++)
+                for (int j = col.start; j < std::min(getCol(), col.end); j++)
+                    if (m < data[i][j])
+                        m = data[i][j];
+            return m;
+        }
+    }
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const RangeOutOfBoundException& e)
+    {
+        std::cerr << "RangeOutOfBoundException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return 0;
+}
+
+template <class T>
+T Matrix<T>::min(const Range &row, const Range &col)const
+{
+
+}
+
+template <class T>
+T Matrix<T>::avg(const Range &row, const Range &col)const
+{
+
+}
+
+template <class T>
+T Matrix<T>::sum(const Range &row, const Range &col)const
+{
+
+}
 
 } // namespace usr
 #endif
