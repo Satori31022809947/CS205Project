@@ -60,5 +60,12 @@ class EmptyMatrixException: public Exception
         : Exception(_err, _func, _file, _line) {};
 };
 
+class RangeOutOfBoundException: public Exception
+{
+    public:
+        RangeOutOfBoundException(const char* _err, const std::string& _func, const std::string& _file, const int _line)
+        : Exception(_err, _func, _file, _line) {};
+};
+
 } // namespace usr
 #endif
