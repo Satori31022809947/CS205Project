@@ -37,7 +37,7 @@ class Matrix {
          * @param {int} row
          * @return {*}
          */
-        Matrix(uint32 row=1,uint32 col=1);
+        Matrix(uint32 row=1,uint32 col=1,T** data=nullptr);
         /** 
          * @description: Shallow copy 
          */
@@ -53,12 +53,12 @@ class Matrix {
         /** 
          * return true if the matrix is empty (data is equal to nullptr)
          */
-        inline bool isEmpty()const {return data==nullptr};
+        inline bool isEmpty()const {return data==nullptr;};
 
         /**
          * return true if the matrix is a vector
          */
-        inline bool isVector()const {return row==1||col==1};
+        inline bool isVector()const {return row==1||col==1;};
 
         /**
          * return true if the matrix is square
@@ -68,7 +68,7 @@ class Matrix {
         /**
          * return true if the matrix is invertible
          */
-        inline bool canInverse()const {};
+        inline bool isInvertible()const {};
 
         /**
          * @description: Deep copy
@@ -84,7 +84,8 @@ class Matrix {
         Matrix operator-(const Matrix& b);
         Matrix operator*(const Matrix& b);
         Matrix operator*(const T& b);
-        friend Matrix operator*(const T& a, const Matrix& b);    
+        template <class _T>
+        friend Matrix<_T> operator*(const _T& a, const Matrix<_T>& b);    
         Matrix operator/(const Matrix& b);
         Matrix operator/(const T& b);
         Matrix operator^(const int b);
@@ -94,13 +95,15 @@ class Matrix {
 		Matrix& operator*=(const Matrix& m);
         Matrix& operator*=(const T t);
         bool operator==(const Matrix& m)const;
-        T* operator[](uint32 i){ return data + i*col; }
+        T* operator[](uint32 i){ return *(data+i); }
         void* operator new(size_t sz, char* filename, int line);
         void* operator new[](size_t sz, char* filename, int line);
         void operator delete(void* p);
         void operator delete[](void* p);
-        friend istream& operator>>(istream&, Matrix&)const;
-		friend ostream& operator<<(ostream&, Matrix&)const;
+        template <class _T>
+        friend std::istream& operator>>(std::istream&, Matrix<_T>&);
+        template <class _T>
+		friend std::ostream& operator<<(std::ostream&, Matrix<_T>&);
 
         T determinant()const;
         uint32 rank()const;
@@ -129,20 +132,25 @@ class Matrix {
         Matrix subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
         Matrix inverse()const;
         Matrix transpoe()const;
-        Martix hermite()const;
+        Matrix hermite()const;
         Matrix reshape(const uint32 _row, const uint32 _col)const;
         Matrix slice(const Range& row, const uint32 col)const;
         Matrix convolute(const Matrix& kernel)const;
 };
 
 template <class T>
-Matrix<T>::Matrix(uint32 _row, uint32 _col)
+Matrix<T>::Matrix(uint32 _row, uint32 _col, T** _data)
 {
     if (_row==0 || _col==0)
         throw(InvalidArgsException("row or col can not be zero", __func__, __FILE__, __LINE__));
     row = _row, col = _col;
+    if (_data != nullptr)
+    {
+        data = _data;
+        return;
+    }
     data = new T* [row];
-    for (int i = 0; i < col; i++)
+    for (int i = 0; i < row; i++)
         data[i] = new T[col];
 }
 
@@ -156,13 +164,14 @@ Matrix<T>::Matrix(const Matrix<T>& m)
 template <class T>
 Matrix<T>::~Matrix()
 {
-    if (!this->isEmpty())
-        release();
+    release();
 }
 
 template <class T>
 inline void Matrix<T>::release()
 {
+    if (isEmpty())
+        return;
     for (int i = 0; i < row; i++)
         delete[] data[i];
     delete[] data;
@@ -176,7 +185,9 @@ Matrix<T> Matrix<T>::clone() const
     for (int i = 0; i < row; i++)
         for (int j = 0; j < col; j++)
             m[i][j] = this->data[i][j];
-    return m;
+    T** d = m.data;
+    m.data = nullptr;
+    return Matrix<T>(row, col, d);
 }
 
 template <class T>
@@ -194,8 +205,10 @@ Matrix<T> Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) cons
             Matrix<T> rst(r, c);
             for (int i = 0; i < r; i++)
                 for (int j = 0; j < c; j++)
-                    rst[i][j] = src1[i][j] + src2[i][j];
-            return rst;
+                    rst[i][j] = const_cast<Matrix<T>&>(src1)[i][j] + const_cast<Matrix<T>&>(src2)[i][j];
+            T** d = rst.data;
+            rst.data = nullptr;
+            return Matrix<T>(r,c,d);
         }
     }
     catch(const EmptyMatrixException& e)
@@ -228,8 +241,10 @@ Matrix<T> Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) c
             Matrix<T> rst(r, c);
             for (int i = 0; i < r; i++)
                 for (int j = 0; j < c; j++)
-                    rst[i][j] = src1[i][j] - src2[i][j];
-            return rst;
+                    rst[i][j] = const_cast<Matrix<T>&>(src1)[i][j] - const_cast<Matrix<T>&>(src2)[i][j];
+            T** d = rst.data;
+            rst.data = nullptr;
+            return Matrix<T>(r, c, d);
         }
     }
     catch(const EmptyMatrixException& e)
@@ -261,7 +276,9 @@ Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src2
             uint32 r = src1.getRow(), c = src2.getCol();
             Matrix<T> rst(r, c);
             /* TODO */
-            return rst;
+            T** d = rst.data;
+            rst.data = nullptr;
+            return Matrix<T>(r, c, d);
         }
     }
     catch(const EmptyMatrixException& e)
@@ -296,8 +313,10 @@ Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
             Matrix<T> rst(r, c);
             for (int i = 0; i < r; i++)
                 for (int j = 0; j < c; j++)
-                    rst[i][j] = src1[i][j] * src2;
-            return rst;
+                    rst[i][j] = const_cast<Matrix<T>&>(src1)[i][j] * src2;
+            T** d = rst.data;
+            rst.data = nullptr;
+            return Matrix<T>(r, c, d);
         }
     }
     catch(const EmptyMatrixException& e)
@@ -328,13 +347,15 @@ Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) cons
             throw(ArithmeticException("Not square matrix", __func__, __FILE__, __LINE__));
         else if (src1.getRow() == src2.getRow())
             throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__));
-        else if (!src2.canInverse())
+        else if (!src2.isInvertible())
             throw(ArithmeticException("Not invertible matrix", __func__, __FILE__, __LINE__));
         else
         {
             Matrix<T> inv = src2.inverse();
             Matrix<T> rst = src1 * inv;
-            return rst;
+            T** d = rst.data;
+            rst.data = nullptr;
+            return Matrix<T>(src1.row, inv.col, d);
         }
     }
     catch(const EmptyMatrixException& e)
@@ -371,8 +392,10 @@ Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
             Matrix<T> rst(r, c);
             for (int i = 0; i < r; i++)
                 for (int j = 0; j < c; j++)
-                    rst[i][j] = src1[i][j] / src2;
-            return rst;
+                    rst[i][j] = const_cast<Matrix<T>&>(src1)[i][j] / src2;
+            T** d = rst.data;
+            rst.data = nullptr;
+            return Matrix<T>(r, c, d);
         }
     }
     catch(const EmptyMatrixException& e)
@@ -474,6 +497,30 @@ bool Matrix<T>::operator==(const Matrix<T>& m)const
 
 }
 
+template <class _T>
+std::istream& operator>>(std::istream& is, Matrix<_T>& m)
+{
+    for (int i = 0; i < m.row; i++)
+        for (int j = 0; j < m.col; j++)
+            is >> m[i][j];
+    return is;
+}
+
+template <class _T>
+std::ostream& operator<<(std::ostream& os, Matrix<_T>& m)
+{
+    os << "[";
+    for (int i = 0; i < m.row; i++)
+    {
+        for (int j = 0; j < m.col; j++)
+            if (i == m.row-1 && j == m.col-1)
+                os << m[i][j] << "]";
+            else 
+                os << m[i][j] << ",";
+        os << "\n";
+    }
+    return os;
+}
 
 
 template <class T>
