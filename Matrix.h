@@ -2,12 +2,13 @@
  * @Author: Satori 3102809947@qq.com
  * @Date: 2022-05-26 11:51:58
  * @LastEditors: Satori 3102809947@qq.com
- * @LastEditTime: 2022-05-27 22:54:28
+ * @LastEditTime: 2022-06-03 10:52:47
  * @FilePath: \CS205Project\Matrix.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 #ifndef Matrix_H_
 #define Matrix_H_
+#include<vector>
 #include <iostream>
 #include "Range.h"
 #include "Exception.h"
@@ -20,6 +21,7 @@ class Matrix {
     private:
         uint32 col;
         uint32 row;
+        uint32 mod;
         T** data;
 
         Matrix Addition(const Matrix& src1, const Matrix& src2) const;
@@ -567,6 +569,124 @@ std::ostream& operator<<(std::ostream& os, Matrix<_T>& m)
         os << "\n";
     }
     return os;
+}
+
+template<class T>
+T Matrix<T>::determinant()const
+{
+    try
+    {
+        if (row == 0 || col == 0)
+            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+        else if (!this->isSquare())
+            throw(MatrixNotSquareException("Matrix must be square", __func__, __FILE__, __LINE__));
+        else 
+        {   
+            if (mod==0)
+            {
+                uint32 r = row, c = col;
+                Matrix<T> rst(r, c, data);
+                T res=1;
+                for (int i = 0; i < r; i++)
+                {
+                    int id=-1;
+                    for (int j = i; j < r; j++)
+                        if (rst[j][i])
+                        {
+                            id=j;
+                            break;
+                        }
+                    if (id==-1)
+                    {
+                        res=0;
+                        return res;
+                    }
+                    if (id!=i)
+                    {
+                        res = -res;
+                        for (int j = 0; j < c; j++)
+                        {
+                            std::swap(rst[id][j],rst[i][j]);
+                        }
+                    }
+                    res = res * rst[i][i];
+                    for (int j = i + 1; j < r; j++)
+                    {
+                        for (int k = c - 1; k > i; k--)
+                        {
+                            rst[j][k] -= rst[i][k] * rst[j][i] / rst[i][i];
+                        }
+                    }
+                }
+                return res;
+            }
+            else {
+                uint32 r = row, c = col, mo = mod;
+                Matrix<T> rst(r, c, data, mo);
+                uint32 res = 1;
+                for (int i = 0; i < r; i++)
+                {
+                    int id=-1;
+                    for (int j = i; j < r; j++)
+                        if (rst[j][i])
+                        {
+                            id=j;
+                            break;
+                        }
+                    if (id==-1)
+                    {
+                        res=0;
+                        return res;
+                    }
+                    if (id!=i)
+                    {
+                        res = -res;
+                        for (int j = 0; j < c; j++)
+                        {
+                            std::swap(rst[id][j],rst[i][j]);
+                        }
+                    }
+                    res = 1ull* res * rst[i][i] % mo;
+                    uint32 p=1,k=mo-2,a=rst[i][i];
+                    for (;k;k>>=1){
+                        if (k&1)p=1ull* p * a %mo;
+                        a=1ull * a *a % mo;
+                    }
+                    for (int j= i + 1; j < c; j++){
+                        rst[i][j] = 1ull * rst[i][j] * p %mo;   
+                    }
+
+                    for (int j = i + 1; j < r; j++)
+                    {
+                        for (int k = c - 1; k > i; k--)
+                        {
+                            rst[j][k] = (rst[j][k] - rst[i][k] * rst[j][i]) % mo;
+                        }
+                    }
+                }
+                res %= mo;
+                if (res<0)res += mo;
+                return res;
+            }
+        }
+    }
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const RangeOutOfBoundException& e)
+    {
+        std::cerr << "RangeOutOfBoundException: " << e.what() << '\n';
+    }
+    catch(const MatrixNotSquareException& e)
+    {
+        std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return 0;
 }
 
 
