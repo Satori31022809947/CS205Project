@@ -2,7 +2,7 @@
  * @Author: Satori 3102809947@qq.com
  * @Date: 2022-05-26 11:51:58
  * @LastEditors: Satori 3102809947@qq.com
- * @LastEditTime: 2022-06-03 17:13:31
+ * @LastEditTime: 2022-06-03 17:48:32
  * @FilePath: \CS205Project\Matrix.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -130,8 +130,14 @@ class Matrix {
         */
         Matrix* crossProduct(const Matrix&)const;
 
+<<<<<<< Updated upstream
         std::vector<std::complex<double>> eigenValue()const;
         Matrix* eigenVector()const;
+=======
+        T eigenValue()const;
+        std::vector<Matrix*> eigenVector()const;
+        Matrix* eigenVector(std::complex<double>)const;
+>>>>>>> Stashed changes
         Matrix* subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
         Matrix* inverse()const;
         Matrix* transpose()const;
@@ -1208,6 +1214,7 @@ Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
     }
     return nullptr;
 }
+
 template <class T>
 Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const
 {
@@ -1247,6 +1254,42 @@ Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anch
         std::cerr << "Fatal: " << e.what() << '\n';
     }
     return nullptr;
+<<<<<<< Updated upstream
+=======
+} // namespace usr
+
+void QR_Decomposition(const Matrix &A,Matrix &Q,Matrix &R){
+    n = A.getrow();
+    for (int i=0;i<n;i++){
+        for (int j=0;j<n;j++){
+            Q[i][j]=R[i][j]=0;
+        }    
+    }
+    for (int k = 0; k < n; k++){
+		double MOD = 0;
+		for (int i = 0; i < n; i++)
+		{
+			MOD += a[i][k] * a[i][k]; 
+		}
+		R[k][k] = sqrt(MOD);
+		for (int i = 0; i < n; i++)
+		{
+			Q[i][k] = A[i][k] / R[k][k]; 
+		}
+
+		for (int i = k + 1; i < n; i++)
+		{
+			for (int j = 0; j < n; j++)
+			{
+				r[k][i] += a[j][i] * q[j][k];
+			}
+			for (int j = 0; j < n; j++)
+			{
+				a[j][i] -= r[k][i] * q[j][k]; 
+			}
+		}
+	}
+>>>>>>> Stashed changes
 }
 
 template <class T>
@@ -1336,11 +1379,63 @@ void QR_Decomposition(const usr::Matrix<T> &A,usr::Matrix<T> &Q,usr::Matrix<T> &
 }
 
 template <class T>
-Matrix* Matrix<T>::eigenVector()const{
-    // TODO :
-
+Matrix* Matrix<T>::eigenVector(stf::complex<double> val)const{
+    
+    try{
+        int n=col;
+        Matrix<std::complex<double> >a(n,n);
+        for (int i=0;i<n;i++){
+            for (int j=0;j<n;j++){
+                a[i][j]=-a[i][j];
+                if (i==j)a[i][j]=a[i][j]+val;
+            }
+        }
+        for (int i=0;i<n;i++){
+            int id=-1;
+            for (int j=i;j<n;j++){
+                if (a[j][i]){
+                    id=j;
+                    break;
+                }
+            }
+            if (id==-1){
+                throw(InvalidEigenValueException("eigenValue is wrong", __func__, __FILE__, __LINE__));
+            }
+            if (id!=i){
+                for (int j=0;j<n;j++){
+                    swap(a[i][j],a[id][j]);
+                }
+            }
+            for (int j=i+1;j<n;j++){
+                for (int k=n;k>=i;k--){
+                    a[j][k]-=a[i][k]*a[j][i]/a[i][i];
+                }
+            }
+        }
+        Matrix<std::complex<double> >res(1,n);
+        res[0][n-1]=1;
+        for (int i=n-2;i>=0;i--){
+            std::complex<double>tmp=0;
+            for (int j=i+1;j<n;j++){
+                tmp-=a[i][j]*res[0][j];
+            }
+            res[0][i]=tmp;
+        }
+        return res;
+    }
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const MatrixNotSquareException& e)
+    {
+        std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
 
 }
-
 
 #endif
