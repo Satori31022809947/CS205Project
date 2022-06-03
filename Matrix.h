@@ -24,13 +24,13 @@ class Matrix {
         uint32 mod;
         T** data;
 
-        Matrix Addition(const Matrix& src1, const Matrix& src2) const;
-        Matrix Subtraction(const Matrix& src1, const Matrix& src2) const;
-        Matrix Multiplication(const Matrix& src1, const Matrix& src2) const;
-        Matrix Multiplication(const Matrix& src1, const T& src2) const;
-        Matrix Strassen(const Matrix& src1, const Matrix& src2) const;
-        Matrix Division(const Matrix& src1, const Matrix& src2) const;
-        Matrix Division(const Matrix& src1, const T& src2) const;
+        Matrix* Addition(const Matrix& src1, const Matrix& src2) const;
+        Matrix* Subtraction(const Matrix& src1, const Matrix& src2) const;
+        Matrix* Multiplication(const Matrix& src1, const Matrix& src2) const;
+        Matrix* Multiplication(const Matrix& src1, const T& src2) const;
+        Matrix* Strassen(const Matrix& src1, const Matrix& src2) const;
+        Matrix* Division(const Matrix& src1, const Matrix& src2) const;
+        Matrix* Division(const Matrix& src1, const T& src2) const;
 
     public:
         /**
@@ -39,7 +39,7 @@ class Matrix {
          * @param {int} row
          * @return {*}
          */
-        Matrix(uint32 row=1,uint32 col=1,T** data=nullptr);
+        Matrix(uint32 row=1,uint32 col=1,uint32 mod=0);
         /** 
          * @description: Shallow copy 
          */
@@ -75,27 +75,27 @@ class Matrix {
         /**
          * @description: Deep copy
          */
-        Matrix clone()const;
+        Matrix* clone()const;
 
         /** @brief Free data
          *  Set data pointer as nullptr after deleting 
          */
         inline void release();
 
-        Matrix operator+(const Matrix& b);
-        Matrix operator-(const Matrix& b);
-        Matrix operator*(const Matrix& b);
-        Matrix operator*(const T& b);
+        Matrix* operator+(const Matrix& b);
+        Matrix* operator-(const Matrix& b);
+        Matrix* operator*(const Matrix& b);
+        Matrix* operator*(const T& b);
         template <class _T>
-        friend Matrix<_T> operator*(const _T& a, const Matrix<_T>& b);    
-        Matrix operator/(const Matrix& b);
-        Matrix operator/(const T& b);
-        Matrix operator^(const int b);
-        Matrix operator=(const Matrix& m);
-		Matrix& operator+=(const Matrix& m);
-		Matrix& operator-=(const Matrix& m);
-		Matrix& operator*=(const Matrix& m);
-        Matrix& operator*=(const T t);
+        friend Matrix<_T>* operator*(const _T& a, const Matrix<_T>& b);    
+        Matrix* operator/(const Matrix& b);
+        Matrix* operator/(const T& b);
+        Matrix* operator^(int b);
+        void operator=(const Matrix& m);
+		void operator+=(const Matrix& m);
+		void operator-=(const Matrix& m);
+		void operator*=(const Matrix& m);
+        void operator*=(const T t);
         bool operator==(const Matrix& m)const;
         T* operator[](uint32 i){ return *(data+i); }
         void* operator new(size_t sz, char* filename, int line);
@@ -127,33 +127,28 @@ class Matrix {
         3-element vectors of the same shape and size. The result is another 3-element vector
         of the same shape and type as operands.
         */
-        Matrix crossProduct(const Matrix&)const;
+        Matrix* crossProduct(const Matrix&)const;
 
         T eigenValue()const;
-        Matrix eigenVector()const;
-        Matrix subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
-        Matrix inverse()const;
-        Matrix transpoe()const;
-        Matrix hermite()const;
-        Matrix reshape(const uint32 _row, const uint32 _col)const;
-        Matrix slice(const Range& row, const uint32 col)const;
-        Matrix convolute(const Matrix& kernel)const;
+        Matrix* eigenVector()const;
+        Matrix* subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
+        Matrix* inverse()const;
+        Matrix* transpoe()const;
+        Matrix* hermite()const;
+        Matrix* reshape(const uint32 _row, const uint32 _col)const;
+        Matrix* slice(const Range& row, const uint32 col)const;
+        Matrix* convolute(const Matrix& kernel)const;
 
-        Matrix createZero()(const uint32 row,const uint32 col)const;
-        Matrix createI()(const uint32 row,const uint32 col)const;
+        Matrix* createZero()(const uint32 row,const uint32 col)const;
+        Matrix* createI()(const uint32 row,const uint32 col)const;
 };
 
 template <class T>
-Matrix<T>::Matrix(uint32 _row, uint32 _col, T** _data)
+Matrix<T>::Matrix(uint32 _row, uint32 _col, uint32 _mod)
 {
     if (_row==0 || _col==0)
         throw(InvalidArgsException("row or col can not be zero", __func__, __FILE__, __LINE__));
-    row = _row, col = _col;
-    if (_data != nullptr)
-    {
-        data = _data;
-        return;
-    }
+    row = _row, col = _col, mod = _mod;
     data = new T* [row];
     for (int i = 0; i < row; i++)
         data[i] = new T[col];
@@ -184,19 +179,17 @@ inline void Matrix<T>::release()
 }
 
 template <class T>
-Matrix<T> Matrix<T>::clone() const
+Matrix<T>* Matrix<T>::clone() const
 {
-    Matrix<T> m(row, col);
+    Matrix<T>* m = new Matrix<T>(row, col);
     for (int i = 0; i < row; i++)
         for (int j = 0; j < col; j++)
-            m[i][j] = this->data[i][j];
-    T** d = m.data;
-    m.data = nullptr;
-    return Matrix<T>(row, col, d);
+            (*m)[i][j] = this->data[i][j];
+    return m;
 }
 
 template <class T>
-Matrix<T> Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T>* Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
     try
     {
@@ -207,13 +200,11 @@ Matrix<T> Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) cons
         else
         {
             uint32 r = src1.getRow(), c = src1.getCol();
-            Matrix<T> rst(r, c);
+            Matrix<T>* rst = new Matrix<T>(r, c);
             for (int i = 0; i < r; i++)
                 for (int j = 0; j < c; j++)
-                    rst[i][j] = const_cast<Matrix<T>&>(src1)[i][j] + const_cast<Matrix<T>&>(src2)[i][j];
-            T** d = rst.data;
-            rst.data = nullptr;
-            return Matrix<T>(r,c,d);
+                    (*rst)[i][j] = const_cast<Matrix<T>&>(src1)[i][j] + const_cast<Matrix<T>&>(src2)[i][j];
+            return rst;
         }
     }
     catch(const EmptyMatrixException& e)
@@ -228,11 +219,11 @@ Matrix<T> Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) cons
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return Matrix<T>();
+    return nullptr;
 }
 
 template <class T>
-Matrix<T> Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T>* Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
     try
     {
@@ -243,13 +234,11 @@ Matrix<T> Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) c
         else
         {
             uint32 r = src1.getRow(), c = src1.getCol();
-            Matrix<T> rst(r, c);
+            Matrix<T>* rst = new Matrix<T>(r, c);
             for (int i = 0; i < r; i++)
                 for (int j = 0; j < c; j++)
-                    rst[i][j] = const_cast<Matrix<T>&>(src1)[i][j] - const_cast<Matrix<T>&>(src2)[i][j];
-            T** d = rst.data;
-            rst.data = nullptr;
-            return Matrix<T>(r, c, d);
+                    (*rst)[i][j] = const_cast<Matrix<T>&>(src1)[i][j] - const_cast<Matrix<T>&>(src2)[i][j];
+            return rst;
         }
     }
     catch(const EmptyMatrixException& e)
@@ -264,11 +253,11 @@ Matrix<T> Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) c
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return Matrix<T>();
+    return nullptr;
 }
 
 template <class T>
-Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
     try
     {
@@ -279,11 +268,9 @@ Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src2
         else
         {
             uint32 r = src1.getRow(), c = src2.getCol();
-            Matrix<T> rst(r, c);
+            Matrix<T>* rst = new Matrix<T>(r, c);
             /* TODO */
-            T** d = rst.data;
-            rst.data = nullptr;
-            return Matrix<T>(r, c, d);
+            return rst;
         }
     }
     catch(const EmptyMatrixException& e)
@@ -302,11 +289,11 @@ Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src2
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return Matrix<T>();
+    return nullptr;
 }
 
 template <class T>
-Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
+Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
 {
     try
     {
@@ -315,13 +302,11 @@ Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
         else
         {
             uint32 r = src1.getRow(), c = src1.getCol();
-            Matrix<T> rst(r, c);
+            Matrix<T>* rst = new Matrix<T>(r, c);
             for (int i = 0; i < r; i++)
                 for (int j = 0; j < c; j++)
-                    rst[i][j] = const_cast<Matrix<T>&>(src1)[i][j] * src2;
-            T** d = rst.data;
-            rst.data = nullptr;
-            return Matrix<T>(r, c, d);
+                    (*rst)[i][j] = const_cast<Matrix<T>&>(src1)[i][j] * src2;
+            return rst;
         }
     }
     catch(const EmptyMatrixException& e)
@@ -332,17 +317,17 @@ Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return Matrix<T>();
+    return nullptr;
 }
 
 template <class T>
-Matrix<T> Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T>* Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
 
 }
 
 template <class T>
-Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
     try
     {
@@ -356,11 +341,10 @@ Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) cons
             throw(ArithmeticException("Not invertible matrix", __func__, __FILE__, __LINE__));
         else
         {
-            Matrix<T> inv = src2.inverse();
-            Matrix<T> rst = src1 * inv;
-            T** d = rst.data;
-            rst.data = nullptr;
-            return Matrix<T>(src1.row, inv.col, d);
+            Matrix<T>* inv = src2.inverse();
+            Matrix<T>* rst = src1 * inv;
+            delete inv;
+            return rst;
         }
     }
     catch(const EmptyMatrixException& e)
@@ -379,11 +363,11 @@ Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) cons
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return Matrix<T>();
+    return nullptr;
 }
 
 template <class T>
-Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
+Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
 {
     try
     {
@@ -394,13 +378,11 @@ Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
         else
         {
             uint32 r = src1.getRow(), c = src1.getCol();
-            Matrix<T> rst(r, c);
+            Matrix<T>* rst = new Matrix<T>(r, c);
             for (int i = 0; i < r; i++)
                 for (int j = 0; j < c; j++)
-                    rst[i][j] = const_cast<Matrix<T>&>(src1)[i][j] / src2;
-            T** d = rst.data;
-            rst.data = nullptr;
-            return Matrix<T>(r, c, d);
+                    (*rst)[i][j] = const_cast<Matrix<T>&>(src1)[i][j] / src2;
+            return rst;
         }
     }
     catch(const EmptyMatrixException& e)
@@ -415,53 +397,53 @@ Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return Matrix<T>();
+    return nullptr;
 }
 
 template <class T>
-Matrix<T> Matrix<T>::operator+(const Matrix<T>& m)
+Matrix<T>* Matrix<T>::operator+(const Matrix<T>& m)
 {
     return Addition(*this, m);
 }
 
 template <class T>
-Matrix<T> Matrix<T>::operator-(const Matrix<T>& m)
+Matrix<T>* Matrix<T>::operator-(const Matrix<T>& m)
 {
     return Subtraction(*this, m);
 }
 
 template <class T>
-Matrix<T> Matrix<T>::operator*(const Matrix<T>& m)
+Matrix<T>* Matrix<T>::operator*(const Matrix<T>& m)
 {
     return Multiplication(*this, m);
 }
 
 template <class T>
-Matrix<T> Matrix<T>::operator*(const T& a)
+Matrix<T>* Matrix<T>::operator*(const T& a)
 {
     return Multiplication(*this, a);
 }
 
 template <class T>
-Matrix<T> operator*(const T& a, const Matrix<T>& b)
+Matrix<T>* operator*(const T& a, const Matrix<T>& b)
 {
     return b*a;
 }    
 
 template <class T>
-Matrix<T> Matrix<T>::operator/(const Matrix<T>& m)
+Matrix<T>* Matrix<T>::operator/(const Matrix<T>& m)
 {
     return Division(*this, m);
 }
 
 template <class T>
-Matrix<T> Matrix<T>::operator/(const T& a)
+Matrix<T>* Matrix<T>::operator/(const T& a)
 {
     return Division(*this, a);
 }
 
 template <class T>
-Matrix<T> Matrix<T>::operator^(const int b)
+Matrix<T>* Matrix<T>::operator^(int b)
 {
     try
     {
@@ -469,9 +451,11 @@ Matrix<T> Matrix<T>::operator^(const int b)
             throw(MatrixNotSquareException("Matrix must be square", __func__, __FILE__, __LINE__));
         else
         {
-            Matrix ret = createI(row,col);
-            for(Matrix cur = createI(row,col);b;b>>=1,cur*=(*this))
+            Matrix<T>* ret = createI(row,col);
+            Matrix<T>* cur = createI(row, col);
+            for(;b;b>>=1,cur*=(*this))
                 if(b&1) ret*=cur;
+            delete cur;
             return ret;
         }
     }
@@ -490,50 +474,45 @@ Matrix<T> Matrix<T>::operator^(const int b)
 }
 
 template <class T>
-Matrix<T> Matrix<T>::operator=(const Matrix<T>& m)
+void Matrix<T>::operator=(const Matrix<T>& m)
 {
     col = m.getCol();
     row = m.getRow();
     for(int i=0;i<row;i++)
         for(int j=0;j<col;j++)
             data[i][j] = m[i][j];
-    return (*this);
 }
 
 template <class T>
-Matrix<T>& Matrix<T>::operator+=(const Matrix<T>& m)
+void Matrix<T>::operator+=(const Matrix<T>& m)
 {
-    Matrix ret = (*this)+m;
+    Matrix<T>* ret = (*this)+m;
     (*this) = ret;
     delete ret;
-    return (*this);
 }
 
 template <class T>
-Matrix<T>& Matrix<T>::operator-=(const Matrix<T>& m)
+void Matrix<T>::operator-=(const Matrix<T>& m)
 {
-    Matrix ret = (*this)-m;
+    Matrix<T>* ret = (*this)-m;
     (*this) = ret;
     delete ret;
-    return (*this);
 }
 
 template <class T>
-Matrix<T>& Matrix<T>::operator*=(const Matrix<T>& m)
+void Matrix<T>::operator*=(const Matrix<T>& m)
 {
-    Matrix ret = (*this)*m;
+    Matrix<T>* ret = (*this)*m;
     (*this) = ret;
     delete ret;
-    return (*this);
 }
 
 template <class T>
-Matrix<T>& Matrix<T>::operator*=(const T t)
+void Matrix<T>::operator*=(const T t)
 {
-    Matrix ret = (*this)*t;
+    Matrix<T>* ret = (*this)*t;
     (*this) = ret;
     delete ret;
-    return (*this);
 }
 
 template <class T>
@@ -585,7 +564,8 @@ T Matrix<T>::determinant()const
             if (mod==0)
             {
                 uint32 r = row, c = col;
-                Matrix<T> rst(r, c, data);
+                Matrix<T>* rst = new Matrix<T>(r,c);
+                rst = *this;
                 T res=1;
                 for (int i = 0; i < r; i++)
                 {
@@ -622,7 +602,7 @@ T Matrix<T>::determinant()const
             }
             else {
                 uint32 r = row, c = col, mo = mod;
-                Matrix<T> rst(r, c, data, mo);
+                Matrix<T>* rst = new Matrix<T>(r, c, mo);
                 uint32 res = 1;
                 for (int i = 0; i < r; i++)
                 {
@@ -666,6 +646,7 @@ T Matrix<T>::determinant()const
                 }
                 res %= mo;
                 if (res<0)res += mo;
+                delete rst;
                 return res;
             }
         }
