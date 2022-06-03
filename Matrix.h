@@ -138,7 +138,7 @@ class Matrix {
         Matrix* toDiagnal()const;
         Matrix* reshape(const uint32 _row, const uint32 _col)const;
         Matrix* slice(const Range& row, const uint32 col)const;
-        Matrix* convolute(const Matrix& kernel)const;
+        Matrix* convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const;
 
 };
 template <class T>
@@ -1156,7 +1156,7 @@ Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
 {
     try{
         if(col>=this->col||row.end>=this.row)
-            throw(RangeOutOfBoundException("range out of range", __func__, __FILE__, __LINE__));
+            throw(RangeOutOfBoundException("range out of bound", __func__, __FILE__, __LINE__));
         else
         {
             Matrix<T> ret = Matrix(row.end - row.start,1,mod);
@@ -1175,9 +1175,37 @@ Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
     }
 }
 template <class T>
-Matrix<T>* Matrix<T>::convolute(const Matrix& kernel)const
+Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const
 {
-
+    try{
+        if(anchor_x>=kernal.getRow()||anchor_y>=kernal.getCol())
+            throw(RangeOutOfBoundException("range out of bound", __func__, __FILE__, __LINE__));
+        else{
+            Matrix<T> ret = Matrix(row,col);
+            for(int i=0;i<row;i++)
+                for(int j=0;j<col;j++)
+                    for(int k=anchor_x-i;k<min(kernal.getRow(),row+anchor_x-i);k++)
+                    {
+                        //i-anc_x+k>=0&&i-anc_x+k<row
+                        //k>=anc_x-i && k< row +anc_x-i
+                        for(int l=anchor_y-j;l<min(kernal.getCol(),col+anchor_y-j);l++)
+                        {
+                            int x = i-anchor_x+k,y = j-anchor_y+l;
+                            if(mod) ret[i][j]=(ret[i][j]+1ll*kernal[x][y]*data[i][j])%mod;
+                            else ret[i][j]+=kernal[x][y]*data[i][j];
+                        }
+                    }
+            return ret;
+        }
+    }
+    catch(const RangeOutOfBoundException& e)
+    {
+        std::cerr << "RangeOutOfBoundException: " << e.what() <<'\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
 }
 } // namespace usr
 #endif
