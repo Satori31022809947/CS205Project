@@ -136,6 +136,9 @@ class Matrix {
         Matrix reshape(const uint32 _row, const uint32 _col)const;
         Matrix slice(const Range& row, const uint32 col)const;
         Matrix convolute(const Matrix& kernel)const;
+
+        Matrix createZero()(const uint32 row,const uint32 col)const;
+        Matrix createI()(const uint32 row,const uint32 col)const;
 };
 
 template <class T>
@@ -458,43 +461,87 @@ Matrix<T> Matrix<T>::operator/(const T& a)
 template <class T>
 Matrix<T> Matrix<T>::operator^(const int b)
 {
-
+    try
+    {
+        if (row!=col)
+            throw(MatrixNotSquareException("Matrix must be square", __func__, __FILE__, __LINE__));
+        else
+        {
+            Matrix ret = createI(row,col);
+            for(Matrix cur = createI(row,col);b;b>>=1,cur*=(*this))
+                if(b&1) ret*=cur;
+            return ret;
+        }
+    }
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const RangeOutOfBoundException& e)
+    {
+        std::cerr << "RangeOutOfBoundException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
 }
 
 template <class T>
 Matrix<T> Matrix<T>::operator=(const Matrix<T>& m)
 {
-
+    col = m.getCol();
+    row = m.getRow();
+    for(int i=0;i<row;i++)
+        for(int j=0;j<col;j++)
+            data[i][j] = m[i][j];
+    return (*this);
 }
 
 template <class T>
 Matrix<T>& Matrix<T>::operator+=(const Matrix<T>& m)
 {
-
+    Matrix ret = (*this)+m;
+    (*this) = ret;
+    delete ret;
+    return (*this);
 }
 
 template <class T>
 Matrix<T>& Matrix<T>::operator-=(const Matrix<T>& m)
 {
-
+    Matrix ret = (*this)-m;
+    (*this) = ret;
+    delete ret;
+    return (*this);
 }
 
 template <class T>
 Matrix<T>& Matrix<T>::operator*=(const Matrix<T>& m)
 {
-
+    Matrix ret = (*this)*m;
+    (*this) = ret;
+    delete ret;
+    return (*this);
 }
 
 template <class T>
 Matrix<T>& Matrix<T>::operator*=(const T t)
 {
-
+    Matrix ret = (*this)*t;
+    (*this) = ret;
+    delete ret;
+    return (*this);
 }
 
 template <class T>
 bool Matrix<T>::operator==(const Matrix<T>& m)const
 {
-
+    if(row!=m.getRow()||col!=m.getCol()) return 0;
+    for(int i=0;i<m.row;i++)
+        for(int j=0;j<m.col;j++)
+            if(data[i][j]!=m[i][j]) return 0;
+    return 1;
 }
 
 template <class _T>
@@ -560,19 +607,102 @@ T Matrix<T>::max(const Range &row, const Range &col)const
 template <class T>
 T Matrix<T>::min(const Range &row, const Range &col)const
 {
-
+    try
+    {
+        if (row.empty() || col.empty())
+            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+        else if (row.start >= getRow() || col.start >= getCol())
+            throw(RangeOutOfBoundException("range is out of bound", __func__, __FILE__, __LINE__));
+        else
+        {
+            T m = data[row.start][col.start];
+            for (int i = row.start; i < std::min(getRow(), row.end); i++)
+                for (int j = col.start; j < std::min(getCol(), col.end); j++)
+                    if (m > data[i][j])
+                        m = data[i][j];
+            return m;
+        }
+    }
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const RangeOutOfBoundException& e)
+    {
+        std::cerr << "RangeOutOfBoundException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return 0;
 }
 
 template <class T>
 T Matrix<T>::avg(const Range &row, const Range &col)const
 {
-
+    try
+    {
+        if (row.empty() || col.empty())
+            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+        else if (row.start >= getRow() || col.start >= getCol())
+            throw(RangeOutOfBoundException("range is out of bound", __func__, __FILE__, __LINE__));
+        else
+        {
+            T tot = 0;
+            int cnt = 0;
+            for (int i = row.start; i < std::min(getRow(), row.end); i++)
+                for (int j = col.start; j < std::min(getCol(), col.end); j++)
+                    tot += data[i][j],cnt++;
+            return tot/cnt;
+        }
+    }
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const RangeOutOfBoundException& e)
+    {
+        std::cerr << "RangeOutOfBoundException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return 0;
 }
 
 template <class T>
 T Matrix<T>::sum(const Range &row, const Range &col)const
 {
-
+    try
+    {
+        if (row.empty() || col.empty())
+            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+        else if (row.start >= getRow() || col.start >= getCol())
+            throw(RangeOutOfBoundException("range is out of bound", __func__, __FILE__, __LINE__));
+        else
+        {
+            T tot = 0;
+            for (int i = row.start; i < std::min(getRow(), row.end); i++)
+                for (int j = col.start; j < std::min(getCol(), col.end); j++)
+                    tot += data[i][j];
+            return tot;
+        }
+    }
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const RangeOutOfBoundException& e)
+    {
+        std::cerr << "RangeOutOfBoundException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return 0;
 }
 
 } // namespace usr
