@@ -142,7 +142,6 @@ class Matrix {
         Matrix createZero()(const uint32 row,const uint32 col)const;
         Matrix createI()(const uint32 row,const uint32 col)const;
 };
-
 template <class T>
 Matrix<T>::Matrix(uint32 _row, uint32 _col, T** _data)
 {
@@ -469,19 +468,15 @@ Matrix<T> Matrix<T>::operator^(const int b)
             throw(MatrixNotSquareException("Matrix must be square", __func__, __FILE__, __LINE__));
         else
         {
-            Matrix ret = createI(row,col);
-            for(Matrix cur = createI(row,col);b;b>>=1,cur*=(*this))
+            Matrix<T> ret = createI(row,col);
+            for(Matrix cur<T> = createI(row,col);b;b>>=1,cur*=(*this))
                 if(b&1) ret*=cur;
             return ret;
         }
     }
-    catch(const InvalidArgsException& e)
+    catch(const MatrixNotSquareException& e)
     {
-        std::cerr << "InvalidArgsException: " << e.what() << '\n';
-    }
-    catch(const RangeOutOfBoundException& e)
-    {
-        std::cerr << "RangeOutOfBoundException: " << e.what() << '\n';
+        std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
     }
     catch(const Exception& e)
     {
@@ -824,6 +819,51 @@ T Matrix<T>::sum(const Range &row, const Range &col)const
     }
     return 0;
 }
+template <class T>
+T Matrix<T>::dotProduct(const Matrix& m)const
+{
+    try{
+        if(row*col!=m.getRow()*m.getCol())
+            throw(SizeMismatchException("the total size must be equal", __func__, __FILE__, __LINE__));
+        else
+        {
+            T tot = 0;
+            for(int i=0;i<row*col;i++)
+            {
+                int rowx = i/col, colx = i%col, rowy = i/m.getCol(), coly = i/m.getCol();
+                tot += data[rowx][colx]*m[rowy][coly];
+            }
+            return tot;
+        }
+    }catch(SizeMismatchException& e)
+    {
+        std::cerr << "SizeMismatchException: "<<e.what()<<'\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+}
+/*template <class T>
+Matrix<T> Matrix<T>::crossProduct(const Matrix& m)const
+{
+    try{
+        if(row!=1||col!=3||m.getRow()!=1||m.getCol()!=3) 
+            throw(SizeMismatchException("row of both matrix must be 1 and col must be 3", __func__, __FILE__, __LINE__));
+        else
+        {
+            T newdata = new T*[]
+            Matrix<T> createZero(1,3);
 
+        }
+    }catch(SizeMismatchException& e)
+    {
+        std::cerr << "SizeMismatchException: "<<e.what()<<'\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+}*/
 } // namespace usr
 #endif
