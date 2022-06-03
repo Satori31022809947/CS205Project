@@ -130,14 +130,9 @@ class Matrix {
         */
         Matrix* crossProduct(const Matrix&)const;
 
-<<<<<<< Updated upstream
         std::vector<std::complex<double>> eigenValue()const;
-        Matrix* eigenVector()const;
-=======
-        T eigenValue()const;
         std::vector<Matrix*> eigenVector()const;
-        Matrix* eigenVector(std::complex<double>)const;
->>>>>>> Stashed changes
+        Matrix<std::complex<double>>* eigenVector(std::complex<double>)const;
         Matrix* subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
         Matrix* inverse()const;
         Matrix* transpose()const;
@@ -285,8 +280,8 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
                     T t = const_cast<Matrix<T>&>(src1)[i][k];
                     for(int j=0;j<c;j++)
                     {
-                        if(mod) rst[i][j]=(rst[i][j]+1ll*t*const_cast<Matrix<T>&>(src2)[k][j])%mod;
-                        else rst[i][j]+=t*const_cast<Matrix<T>&>(src2)[k][j];
+                        if(mod) (*rst)[i][j]=((*rst)[i][j]+1ll*t*const_cast<Matrix<T>&>(src2)[k][j])%mod;
+                        else (*rst)[i][j]+=t*const_cast<Matrix<T>&>(src2)[k][j];
                     }
                 }
             return rst;
@@ -299,10 +294,6 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
     catch(const SizeMismatchException& e)
     {
         std::cerr << "SizeMismatchException: " << e.what() << '\n';
-    }
-    catch(const ArithmeticException& e)
-    {
-        std::cerr << "ArithmeticException: " << e.what() << '\n';
     }
     catch(const Exception& e)
     {
@@ -353,11 +344,11 @@ Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) con
         if (src1.isEmpty() || src2.isEmpty())
             throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
         else if (!src1.isSquare() || !src2.isSquare())
-            throw(ArithmeticException("Not square matrix", __func__, __FILE__, __LINE__));
+            throw(MatrixNotSquareException("Not square matrix", __func__, __FILE__, __LINE__));
         else if (src1.getRow() == src2.getRow())
             throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__));
         else if (!src2.isInvertible())
-            throw(ArithmeticException("Not invertible matrix", __func__, __FILE__, __LINE__));
+            throw(InverseNotExistException("Not invertible matrix", __func__, __FILE__, __LINE__));
         else
         {
             Matrix<T>* inv = src2.inverse();
@@ -374,9 +365,13 @@ Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) con
     {
         std::cerr << "SizeMismatchException: " << e.what() << '\n';
     }
-    catch(const ArithmeticException& e)
+    catch(const MatrixNotSquareException& e)
     {
-        std::cerr << "ArithmeticException: " << e.what() << '\n';
+        std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
+    }
+    catch(const InverseNotExistException& e)
+    {
+        std::cerr << "InverseNotExistException: " << e.what() << '\n';
     }
     catch(const Exception& e)
     {
@@ -474,15 +469,18 @@ Matrix<T>* Matrix<T>::operator^(int b)
         {
             Matrix<T>* ret = new Matrix<T>(row,col);
             for(int i=0;i<row;i++)
-                for(int j=0;j<col;j++) ret[i][j]=(i==j);
-            Matrix<T>* cur = new Matrix<T>(row,col);
+                for(int j=0;j<col;j++) (*ret)[i][j]=(i==j);
+            Matrix<T> cur(row,col);
             for(int i=0;i<row;i++)
                 for(int j=0;j<col;j++) cur[i][j]=(i==j);
             for(;b;b>>=1,cur*=(*this))
                 if(b&1) ret*=cur;
-            delete cur;
             return ret;
         }
+    }
+    catch(const EmptyMatrixException& e)
+    {
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
     }
     catch(const MatrixNotSquareException& e)
     {
@@ -546,7 +544,7 @@ bool Matrix<T>::operator==(const Matrix<T>& m)const
     if(row!=m.getRow()||col!=m.getCol()) return 0;
     for(int i=0;i<m.row;i++)
         for(int j=0;j<m.col;j++)
-            if(data[i][j]!=m[i][j]) return 0;
+            if(data[i][j]!=const_cast<Matrix<T>&>(m)[i][j]) return 0;
     return 1;
 }
 
@@ -582,12 +580,12 @@ Matrix<T>* Matrix<T>::toDiagnal()const
     {
         uint32 r = row, c = col;
         Matrix<T>* rst = new Matrix<T>(r,c);
-        *rst = *this;
+        (*rst) = *this;
         for (int i = 0; i < r; i++)
         {
             int id=-1;
             for (int j = i; j < r; j++)
-                if (rst[j][i])
+                if ((*rst)[j][i])
                 {
                     id=j;
                     break;
@@ -596,14 +594,14 @@ Matrix<T>* Matrix<T>::toDiagnal()const
             {
                 for (int j = 0; j < c; j++)
                 {
-                    std::swap(rst[id][j],rst[i][j]);
+                    std::swap((*rst)[id][j],(*rst)[i][j]);
                 }
             }
             for (int j = i + 1; j < r; j++)
             {
                 for (int k = c - 1; k > i; k--)
                 {
-                    rst[j][k] -= rst[i][k] * rst[j][i] / rst[i][i];
+                    (*rst)[j][k] -= (*rst)[i][k] * (*rst)[j][i] / (*rst)[i][i];
                 }
             }
         }
@@ -611,9 +609,9 @@ Matrix<T>* Matrix<T>::toDiagnal()const
         {
             for(int j=r-1;j>i;j--)
             {
-                if(rst[j][j]==0) continue;
-                T t = rst[i][j]/rst[j][j];
-                for(int k=i;k<=j;k++) rst[i][k]-=t*rst[j][j];
+                if((*rst)[j][j]==0) continue;
+                T t = (*rst)[i][j]/(*rst)[j][j];
+                for(int k=i;k<=j;k++) (*rst)[i][k]-=t*(*rst)[j][j];
             }
         }
         return rst;
@@ -625,7 +623,7 @@ Matrix<T>* Matrix<T>::toDiagnal()const
         {
             int id=-1;
             for (int j = i; j < r; j++)
-                if (rst[j][i])
+                if ((*rst)[j][i])
                 {
                     id=j;
                     break;
@@ -634,22 +632,22 @@ Matrix<T>* Matrix<T>::toDiagnal()const
             {
                 for (int j = 0; j < c; j++)
                 {
-                    std::swap(rst[id][j],rst[i][j]);
+                    std::swap((*rst)[id][j],(*rst)[i][j]);
                 }
             }
-            uint32 p=1,k=mo-2,a=rst[i][i];
+            uint32 p=1,k=mo-2,a=(*rst)[i][i];
             for (;k;k>>=1){
                 if (k&1)p=1ull* p * a %mo;
                 a=1ull * a *a % mo;
             }
             for (int j= i + 1; j < c; j++){
-                rst[i][j] = 1ull * rst[i][j] * p %mo;   
+                (*rst)[i][j] = 1ull * (*rst)[i][j] * p %mo;   
             }
             for (int j = i + 1; j < r; j++)
             {
                 for (int k = c - 1; k > i; k--)
                 {
-                    rst[j][k] = (rst[j][k] - rst[i][k] * rst[j][i]) % mo;
+                    (*rst)[j][k] = ((*rst)[j][k] - (*rst)[i][k] * (*rst)[j][i]) % mo;
                 }
             }
         }
@@ -657,9 +655,9 @@ Matrix<T>* Matrix<T>::toDiagnal()const
         {
             for(int j=r-1;j>i;j--)
             {
-                if(rst[j][j]==0) continue;
-                T t = rst[i][j]*ksm(rst[j][j],mod-2);
-                for(int k=i;k<=j;k++) rst[i][k]=((rst[i][k]-1ll*t*rst[j][j])%mod+mod)%mod;
+                if((*rst)[j][j]==0) continue;
+                T t = (*rst)[i][j]*ksm((*rst)[j][j],mod-2);
+                for(int k=i;k<=j;k++) (*rst)[i][k]=(((*rst)[i][k]-1ll*t*(*rst)[j][j])%mod+mod)%mod;
             }
         }
         return rst;
@@ -679,8 +677,8 @@ T Matrix<T>::determinant()const
             if (mod==0)
             {
                 uint32 r = row, c = col;
-                Matrix<T>* rst = new Matrix<T>(r,c);
-                (*rst).clone(*this);
+                Matrix<T> rst(r,c);
+                rst = (*this);
                 T res=1;
                 for (int i = 0; i < r; i++)
                 {
@@ -720,7 +718,7 @@ T Matrix<T>::determinant()const
             }
             else {
                 uint32 r = row, c = col, mo = mod;
-                Matrix<T>* rst = new Matrix<T>(r, c, mo);
+                Matrix<T> rst(r, c, mo);
                 uint32 res = 1;
                 for (int i = 0; i < r; i++)
                 {
@@ -764,7 +762,6 @@ T Matrix<T>::determinant()const
                 }
                 res %= mo;
                 if (res<0)res += mo;
-                delete rst;
                 return res;
             }
         }
@@ -792,8 +789,8 @@ uint32 Matrix<T>::rank()const{
             throw(EmptyMatrixException("Matrix is empty, can't find rank", __func__, __FILE__, __LINE__)); 
         uint32 res=0;
         uint32 r = row, c = col;
-        Matrix<T>* rst = new Matrix<T>(r, c);
-        (*rst).clone(*this);
+        Matrix<T> rst(r, c);
+        rst = (*this);
         for (int i = 0; i < r && i < c; i++)
         {
             int id=-1;
@@ -825,7 +822,6 @@ uint32 Matrix<T>::rank()const{
                 }
             }
         }
-        delete rst;
         return res;
     }
 
@@ -1018,8 +1014,8 @@ T Matrix<T>::dotProduct(const Matrix<T>& m)const
             T tot = 0;
             for(int i=0;i<row*col;i++)
             {
-                int rowx = i/col, colx = i%col, rowy = i/m.getCol(), coly = i/m.getCol();
-                tot += data[rowx][colx]*m[rowy][coly];
+                int rowx = i/col, colx = i%col, rowy = i/m.getCol(), coly = i%m.getCol();
+                tot += data[rowx][colx]*const_cast<Matrix<T>&>(m)[rowy][coly];
             }
             return tot;
         }
@@ -1044,9 +1040,9 @@ Matrix<T>* Matrix<T>::crossProduct(const Matrix<T>& m)const
         else
         {
             Matrix<T>* ret = new Matrix<T>(1,3);
-            (*ret)[0][0] =  data[1]*m[2]-data[2]*m[1];
-            (*ret)[0][1] =  data[2]*m[0]-data[0]*m[2];
-            (*ret)[0][2] =  data[0]*m[1]-data[1]*m[0];
+            (*ret)[0][0] = data[0][1]*const_cast<Matrix<T>&>(m)[0][2]-data[0][2]*const_cast<Matrix<T>&>(m)[0][1];
+            (*ret)[0][1] = data[0][2]*const_cast<Matrix<T>&>(m)[0][0]-data[0][0]*const_cast<Matrix<T>&>(m)[0][2];
+            (*ret)[0][2] = data[0][0]*const_cast<Matrix<T>&>(m)[0][1]-data[0][1]*const_cast<Matrix<T>&>(m)[0][0];
             return ret;
         }
     }catch(SizeMismatchException& e)
@@ -1065,50 +1061,61 @@ Matrix<T>* Matrix<T>::crossProduct(const Matrix<T>& m)const
 }
 template <class T>
 Matrix<T>* Matrix<T>::transpose()const
-{
-    Matrix<T>* ret = new Matrix<T>(col,row,mod);
-    for(int i=0;i<col;i++)
-        for(int j=0;j<row;j++) ret[i][j]=data[j][i];
-    return ret;
+{   
+    try{
+        if (isEmpty())
+            throw(EmptyMatrixException("Matrix is empty, can't transpose", __func__, __FILE__, __LINE__)); 
+        else
+        {
+            Matrix<T>* ret = new Matrix<T>(col,row,mod);
+            for(int i=0;i<col;i++)
+                for(int j=0;j<row;j++) ret[i][j]=data[j][i];
+            return ret;
+        }
+    }
+    catch(const EmptyMatrixException& e)
+    {
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
 }
 template <class T>
 Matrix<T>* Matrix<T>::inverse()const
 {
     try{
-        if (row == 0 || col == 0)
-            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
-        else if (!this->isSquare())
+        if (isEmpty())
+            throw(EmptyMatrixException("Matrix is empty, can't find inverse", __func__, __FILE__, __LINE__)); 
+        else if (!isSquare())
             throw(MatrixNotSquareException("non-square matrix is not invertible", __func__, __FILE__, __LINE__));
+        else if (!isInvertible())
+                throw(InverseNotExistException("singular matrix is not invertible", __func__, __FILE__, __LINE__));
         else
         {
-            if(!isInvertible())
-                throw(InverseNotExistException("singular matrix is not invertible", __func__, __FILE__, __LINE__));
-            else
-            {
-                Matrix<T>* t = new Matrix<T>(row,row+col,mod);
-                for(int i=0;i<row;i++)
-                    for(int j=0;j<row+col;j++)
-                    {
-                        if(j<col) (*t)[i][j]=data[i][j];
-                        else (*t)[i][j]=(j-col==i); 
-                    }
-                Matrix<T>* m = t->toDiagnal();
-                delete t;
-                Matrix<T>* ret = new Matrix<T>(row,col,mod);
-                for(int i=0;i<row;i++)
-                    for(int j=0;j<col;j++)
-                    {
-                        if(mod) (*ret)[i][j] = 1ll*m[i][row+j]*ksm(m[i][i],mod-2)%mod;
-                        else (*ret)[i][j] = m[i][row+j]/m[i][i];
-                    }
-                delete m;
-                return ret;
-            }
+            Matrix<T> t(row,row+col,mod);
+            for(int i=0;i<row;i++)
+                for(int j=0;j<row+col;j++)
+                {
+                    if(j<col) t[i][j]=data[i][j];
+                    else t[i][j]=(j-col==i); 
+                }
+            Matrix<T>* m = t.toDiagnal();
+            Matrix<T>* ret = new Matrix<T>(row,col,mod);
+            for(int i=0;i<row;i++)
+                for(int j=0;j<col;j++)
+                {
+                    if(mod) (*ret)[i][j] = 1ll*(*m)[i][row+j]*ksm((*m)[i][i],mod-2)%mod;
+                    else (*ret)[i][j] = (*m)[i][row+j]/(*m)[i][i];
+                }
+            delete m;
+            return ret;
         }
     }
-    catch(const InvalidArgsException& e)
+    catch(const EmptyMatrixException& e)
     {
-        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
     }
     catch(const MatrixNotSquareException& e)
     {
@@ -1122,6 +1129,7 @@ Matrix<T>* Matrix<T>::inverse()const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
+    return nullptr;
 }
 template <class T>
 Matrix<T>* Matrix<T>::subMatrix(const Range& row, const Range& col)const
@@ -1191,7 +1199,7 @@ Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
         if (row.empty())
             throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
         if(col>=this->col||row.start>=this->row)
-            throw(RangeOutOfBoundException("range out of range", __func__, __FILE__, __LINE__));
+            throw(RangeOutOfBoundException("range out of bound", __func__, __FILE__, __LINE__));
         else
         {
             Matrix<T>* ret = new Matrix<T>(std::min(this->getRow(), row.end) - row.start,1,mod);
@@ -1234,8 +1242,8 @@ Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anch
                         for(int l=anchor_y-j;l<std::min(kernal.getCol(),col+anchor_y-j);l++)
                         {
                             int x = i-anchor_x+k,y = j-anchor_y+l;
-                            if(mod) (*ret)[i][j]=((*ret)[i][j]+1ll*kernal[x][y]*data[i][j])%mod;
-                            else (*ret)[i][j]+=kernal[x][y]*data[i][j];
+                            if(mod) (*ret)[i][j]=((*ret)[i][j]+1ll*const_cast<Matrix<T>&>[x][y]*data[i][j])%mod;
+                            else (*ret)[i][j]+=const_cast<Matrix<T>&>[x][y]*data[i][j];
                         }
                     }
             return ret;
@@ -1254,57 +1262,22 @@ Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anch
         std::cerr << "Fatal: " << e.what() << '\n';
     }
     return nullptr;
-<<<<<<< Updated upstream
-=======
-} // namespace usr
-
-void QR_Decomposition(const Matrix &A,Matrix &Q,Matrix &R){
-    n = A.getrow();
-    for (int i=0;i<n;i++){
-        for (int j=0;j<n;j++){
-            Q[i][j]=R[i][j]=0;
-        }    
-    }
-    for (int k = 0; k < n; k++){
-		double MOD = 0;
-		for (int i = 0; i < n; i++)
-		{
-			MOD += a[i][k] * a[i][k]; 
-		}
-		R[k][k] = sqrt(MOD);
-		for (int i = 0; i < n; i++)
-		{
-			Q[i][k] = A[i][k] / R[k][k]; 
-		}
-
-		for (int i = k + 1; i < n; i++)
-		{
-			for (int j = 0; j < n; j++)
-			{
-				r[k][i] += a[j][i] * q[j][k];
-			}
-			for (int j = 0; j < n; j++)
-			{
-				a[j][i] -= r[k][i] * q[j][k]; 
-			}
-		}
-	}
->>>>>>> Stashed changes
 }
 
 template <class T>
 std::vector<std::complex<double>> Matrix<T>::eigenValue() const
 {
     try{
-        if (row == 0 || col == 0)
-            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
-        else if (!this->isSquare())
+        if (isEmpty())
+            throw(EmptyMatrixException("Matrix is empty, can't find eigenvalue", __func__, __FILE__, __LINE__)); 
+        else if (!isSquare())
             throw(MatrixNotSquareException("non-square matrix does not have eigenValue", __func__, __FILE__, __LINE__));
         else
         {
             int n = row;
-            Matrix A(n,n)=this;
-            Matrix U(n,n);
+            Matrix<T> A(n,n);
+            A = (*this);
+            Matrix<T> U(n,n);
             for (int i=0;i<n;i++){
                 for (int j=0;j<n;j++){
                     if (i==j){
@@ -1315,23 +1288,28 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
                     }
                 }
             }
-            Matrix Q(n,n);
-            Matrix R(n,n);
+            Matrix<T> Q(n,n);
+            Matrix<T> R(n,n);
+            Matrix<T>* temp = nullptr;
             for (int tim=0;tim<50;tim++){
                 QR_Decomposition(A,Q,R);
-                A=R*Q;
-                U=U*Q;
+                temp = R*Q;
+                A = *temp;
+                delete temp;
+                temp = U*Q;
+                U = *temp;
+                delete temp;
             }
-            vector<complex>res;
+            std::vector<std::complex<double>> res;
             for (int i=0;i<n;i++){
                 res.push_back(A[i][i]);
             }
             return res;
         }
     }
-    catch(const InvalidArgsException& e)
+    catch(const EmptyMatrixException& e)
     {
-        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
     }
     catch(const MatrixNotSquareException& e)
     {
@@ -1341,49 +1319,15 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-}
-} // namespace usr
-
-template <class T>
-void QR_Decomposition(const usr::Matrix<T> &A,usr::Matrix<T> &Q,usr::Matrix<T> &R){
-    n = A.getrow();
-    for (int i=0;i<n;i++){
-        for (int j=0;j<n;j++){
-            Q[i][j]=R[i][j]=0;
-        }    
-    }
-    for (int k = 0; k < n; k++){
-		double MOD = 0;
-		for (int i = 0; i < n; i++)
-		{
-			MOD += a[i][k] * a[i][k]; 
-		}
-		R[k][k] = sqrt(MOD);
-		for (int i = 0; i < n; i++)
-		{
-			Q[i][k] = A[i][k] / R[k][k]; 
-		}
-
-		for (int i = k + 1; i < n; i++)
-		{
-			for (int j = 0; j < n; j++)
-			{
-				r[k][i] += a[j][i] * q[j][k];
-			}
-			for (int j = 0; j < n; j++)
-			{
-				a[j][i] -= r[k][i] * q[j][k]; 
-			}
-		}
-	}
+    return std::vector<std::complex<double>>;
 }
 
 template <class T>
-Matrix* Matrix<T>::eigenVector(stf::complex<double> val)const{
+Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)const{
     
     try{
         int n=col;
-        Matrix<std::complex<double> >a(n,n);
+        Matrix<std::complex<double>> a(n,n);
         for (int i=0;i<n;i++){
             for (int j=0;j<n;j++){
                 a[i][j]=-a[i][j];
@@ -1399,7 +1343,7 @@ Matrix* Matrix<T>::eigenVector(stf::complex<double> val)const{
                 }
             }
             if (id==-1){
-                throw(InvalidEigenValueException("eigenValue is wrong", __func__, __FILE__, __LINE__));
+                throw(WrongEigenValueException("eigenvalue is wrong", __func__, __FILE__, __LINE__));
             }
             if (id!=i){
                 for (int j=0;j<n;j++){
@@ -1412,30 +1356,61 @@ Matrix* Matrix<T>::eigenVector(stf::complex<double> val)const{
                 }
             }
         }
-        Matrix<std::complex<double> >res(1,n);
-        res[0][n-1]=1;
+        Matrix<std::complex<double>>* res = new Matrix<std::complex<double>>(1,n);
+        (*res)[0][n-1]=1;
         for (int i=n-2;i>=0;i--){
             std::complex<double>tmp=0;
             for (int j=i+1;j<n;j++){
-                tmp-=a[i][j]*res[0][j];
+                tmp-=a[i][j]*(*res)[0][j];
             }
-            res[0][i]=tmp;
+            (*res)[0][i]=tmp;
         }
         return res;
     }
-    catch(const InvalidArgsException& e)
+    catch(const WrongEigenValueException& e)
     {
-        std::cerr << "InvalidArgsException: " << e.what() << '\n';
-    }
-    catch(const MatrixNotSquareException& e)
-    {
-        std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
+        std::cerr << "WrongEigenValueException: " << e.what() << '\n';
     }
     catch(const Exception& e)
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
+    return nullptr;
+}
+} // namespace usr
 
+template <class T>
+void QR_Decomposition(usr::Matrix<T>& A,usr::Matrix<T>& Q,usr::Matrix<T>& R){
+    uint32 n = A.getrow();
+    for (int i=0;i<n;i++){
+        for (int j=0;j<n;j++){
+            Q[i][j]=R[i][j]=0;
+        }    
+    }
+    for (int k = 0; k < n; k++){
+		double MOD = 0;
+		for (int i = 0; i < n; i++)
+		{
+			MOD += A[i][k] * A[i][k]; 
+		}
+		R[k][k] = sqrt(MOD);
+		for (int i = 0; i < n; i++)
+		{
+			Q[i][k] = A[i][k] / R[k][k]; 
+		}
+
+		for (int i = k + 1; i < n; i++)
+		{
+			for (int j = 0; j < n; j++)
+			{
+				R[k][i] += A[j][i] * Q[j][k];
+			}
+			for (int j = 0; j < n; j++)
+			{
+				A[j][i] -= R[k][i] * Q[j][k]; 
+			}
+		}
+	}
 }
 
 #endif
