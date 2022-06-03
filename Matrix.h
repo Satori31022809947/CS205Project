@@ -2,7 +2,7 @@
  * @Author: Satori 3102809947@qq.com
  * @Date: 2022-05-26 11:51:58
  * @LastEditors: Satori 3102809947@qq.com
- * @LastEditTime: 2022-06-03 11:34:33
+ * @LastEditTime: 2022-06-03 12:20:33
  * @FilePath: \CS205Project\Matrix.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -661,7 +661,10 @@ T Matrix<T>::determinant()const
                     res = res * rst[i][i];
                     for (int j = i + 1; j < r; j++)
                     {
-                        for (int k = c - 1; k > i; k--)
+                        for (int k = c - 1; k >= i; k--){
+                            rst[j][k] *= rst[i][i];
+                        }
+                        for (int k = c - 1; k >= i; k--)
                         {
                             rst[j][k] -= rst[i][k] * rst[j][i] / rst[i][i];
                         }
@@ -707,7 +710,7 @@ T Matrix<T>::determinant()const
 
                     for (int j = i + 1; j < r; j++)
                     {
-                        for (int k = c - 1; k > i; k--)
+                        for (int k = c - 1; k >= i; k--)
                         {
                             rst[j][k] = (rst[j][k] - rst[i][k] * rst[j][i]) % mo;
                         }
@@ -771,9 +774,9 @@ uint32 Matrix<T>::rank()const{
             }
             for (int j = i + 1; j < r; j++)
             {
-                for (int k = c - 1; k > i; k--)
+                for (int k = c - 1; k >= i; k--)
                     rst[j][k] =rst[j][k] * rst[i][i];
-                for (int k = c - 1; k > i; k--)
+                for (int k = c - 1; k >= i; k--)
                 {
                     rst[j][k] -= rst[i][k] * rst[j][i] / rst[i][i];
                 }
