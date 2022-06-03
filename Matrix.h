@@ -2,7 +2,7 @@
  * @Author: Satori 3102809947@qq.com
  * @Date: 2022-05-26 11:51:58
  * @LastEditors: Satori 3102809947@qq.com
- * @LastEditTime: 2022-06-03 11:21:47
+ * @LastEditTime: 2022-06-03 11:34:33
  * @FilePath: \CS205Project\Matrix.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -128,7 +128,6 @@ class Matrix {
         of the same shape and type as operands.
         */
         Matrix crossProduct(const Matrix&)const;
-
         T eigenValue()const;
         Matrix eigenVector()const;
         Matrix subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
@@ -742,6 +741,48 @@ uint32 Matrix<T>::rank()const{
     }
     return 0;
 }
+
+template<class T>
+T Matrix<T>::trace()const
+{
+
+    try
+    {
+        if (row == 0 || col == 0)
+            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+        else if (!this->isSquare())
+            throw(MatrixNotSquareException("Matrix must be square", __func__, __FILE__, __LINE__));
+        else 
+        {   
+            T res=0;
+            for (int i=0;i<row;i++){
+                res=res+data[i][i];
+            }
+            return res;
+        }
+    }
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const RangeOutOfBoundException& e)
+    {
+        std::cerr << "RangeOutOfBoundException: " << e.what() << '\n';
+    }
+    catch(const MatrixNotSquareException& e)
+    {
+        std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return 0;
+}
+        
+
+
+
 
 template <class T>
 T Matrix<T>::max(const Range &row, const Range &col)const
