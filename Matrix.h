@@ -2,7 +2,7 @@
  * @Author: Satori 3102809947@qq.com
  * @Date: 2022-05-26 11:51:58
  * @LastEditors: Satori 3102809947@qq.com
- * @LastEditTime: 2022-06-03 10:48:18
+ * @LastEditTime: 2022-06-03 10:52:47
  * @FilePath: \CS205Project\Matrix.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -600,8 +600,11 @@ T Matrix<T>::determinant()const
                         }
                     }
                     res = 1ull* res * rst[i][i] % mo;
-                    uint32 p=1;
-
+                    uint32 p=1,k=mo-2,a=rst[i][i];
+                    for (;k;k>>=1){
+                        if (k&1)p=1ull* p * a %mo;
+                        a=1ull * a *a % mo;
+                    }
                     for (int j= i + 1; j < c; j++){
                         rst[i][j] = 1ull * rst[i][j] * p %mo;   
                     }
