@@ -2,13 +2,14 @@
  * @Author: Satori 3102809947@qq.com
  * @Date: 2022-05-26 11:51:58
  * @LastEditors: Satori 3102809947@qq.com
- * @LastEditTime: 2022-06-03 12:20:33
+ * @LastEditTime: 2022-06-03 17:13:31
  * @FilePath: \CS205Project\Matrix.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 #ifndef Matrix_H_
 #define Matrix_H_
-#include<vector>
+#include <complex>
+#include <vector>
 #include <iostream>
 #include "Range.h"
 #include "Exception.h"
@@ -1208,6 +1209,7 @@ Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
     return nullptr;
 }
 template <class T>
+<<<<<<< Updated upstream
 Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const
 {
     try{
@@ -1247,5 +1249,102 @@ Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anch
     }
     return nullptr;
 }
+=======
+Matrix<T>* Matrix<T>::convolute(const Matrix& kernel)const{
+
+>>>>>>> Stashed changes
 } // namespace usr
+
+void QR_Decomposition(const Matrix &A,Matrix &Q,Matrix &R){
+    n = A.getrow();
+    for (int i=0;i<n;i++){
+        for (int j=0;j<n;j++){
+            Q[i][j]=R[i][j]=0;
+        }    
+    }
+    for (int k = 0; k < n; k++){
+		double MOD = 0;
+		for (int i = 0; i < n; i++)
+		{
+			MOD += a[i][k] * a[i][k]; 
+		}
+		R[k][k] = sqrt(MOD);
+		for (int i = 0; i < n; i++)
+		{
+			Q[i][k] = A[i][k] / R[k][k]; 
+		}
+
+		for (int i = k + 1; i < n; i++)
+		{
+			for (int j = 0; j < n; j++)
+			{
+				r[k][i] += a[j][i] * q[j][k];
+			}
+			for (int j = 0; j < n; j++)
+			{
+				a[j][i] -= r[k][i] * q[j][k]; 
+			}
+		}
+	}
+}
+
+template <class T>
+vector<complex> Matrix<T>::eigenValue()const{
+
+    try{
+        if (row == 0 || col == 0)
+            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+        else if (!this->isSquare())
+            throw(MatrixNotSquareException("non-square matrix does not have eigenValue", __func__, __FILE__, __LINE__));
+        else
+        {
+            int n = row;
+            Matrix A(n,n)=this;
+            Matrix U(n,n);
+            for (int i=0;i<n;i++){
+                for (int j=0;j<n;j++){
+                    if (i==j){
+                        U[i][j]=1;
+                    }
+                    else{
+                        U[i][j]=0;
+                    }
+                }
+            }
+            Matrix Q(n,n);
+            Matrix R(n,n);
+            for (int tim=0;tim<50;tim++){
+                QR_Decomposition(A,Q,R);
+                A=R*Q;
+                U=U*Q;
+            }
+            vector<complex>res;
+            for (int i=0;i<n;i++){
+                res.push_back(A[i][i]);
+            }
+            return res;
+        }
+    }
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const MatrixNotSquareException& e)
+    {
+        std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+}
+
+template <class T>
+Matrix* Matrix<T>::eigenVector()const{
+    // TODO :
+
+
+}
+
+
 #endif
