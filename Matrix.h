@@ -273,17 +273,23 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
         else
         {
             uint32 r = src1.getRow(), c = src2.getCol(), m = src1.getCol();
-            Matrix<T>* rst = new Matrix<T>(r, c);
-            for(int k=0;k<m;k++)
-                for(int i=0;i<r;i++)
-                {
-                    T t = const_cast<Matrix<T>&>(src1)[i][k];
-                    for(int j=0;j<c;j++)
+            Matrix<T>* rst = nullptr;
+            if (src1.isSquare() && src2.isSquare() && r&1==0 && r >= 256)
+                rst = Strassen(src1, src2);
+            else 
+            {
+                rst = new Matrix<T>(r, c);
+                for(int k=0;k<m;k++)
+                    for(int i=0;i<r;i++)
                     {
-                        if(mod) (*rst)[i][j]=((*rst)[i][j]+1ll*t*const_cast<Matrix<T>&>(src2)[k][j])%mod;
-                        else (*rst)[i][j]+=t*const_cast<Matrix<T>&>(src2)[k][j];
+                        T t = const_cast<Matrix<T>&>(src1)[i][k];
+                        for(int j=0;j<c;j++)
+                        {
+                            if(mod) (*rst)[i][j]=((*rst)[i][j]+1ll*t*const_cast<Matrix<T>&>(src2)[k][j])%mod;
+                            else (*rst)[i][j]+=t*const_cast<Matrix<T>&>(src2)[k][j];
+                        }
                     }
-                }
+            }
             return rst;
         }
     }
@@ -330,10 +336,107 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
     return nullptr;
 }
 
+template <class _T>
+inline void add(Matrix<_T>& a, Matrix<_T>& b, Matrix<_T>& c)
+{
+    Matrix<_T>* temp = a + b;
+    c = *temp;
+    delete temp;
+}
+
+template <class _T>
+inline void sub(Matrix<_T>& a, Matrix<_T>& b, Matrix<_T>& c)
+{
+    Matrix<_T>* temp = a - b;
+    c = *temp;
+    delete temp;
+}
+
+template <class _T>
+inline void mul(Matrix<_T>& a, Matrix<_T>& b, Matrix<_T>& c)
+{
+    Matrix<_T>* temp = a * b;
+    c = *temp;
+    delete temp;
+}
+
 template <class T>
 Matrix<T>* Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
+    uint32 size = src1.getRow()/2;
+    Matrix<T> matrices[21] = {
+        Matrix<T>(size, size), Matrix<T>(size, size), Matrix<T>(size, size), 
+        Matrix<T>(size, size), Matrix<T>(size, size), Matrix<T>(size, size), 
+        Matrix<T>(size, size), Matrix<T>(size, size), Matrix<T>(size, size),   
+        Matrix<T>(size, size), Matrix<T>(size, size), Matrix<T>(size, size), 
+        Matrix<T>(size, size), Matrix<T>(size, size), Matrix<T>(size, size), 
+        Matrix<T>(size, size), Matrix<T>(size, size), Matrix<T>(size, size), 
+        Matrix<T>(size, size), Matrix<T>(size, size), Matrix<T>(size, size),                                               
+    };
 
+    for (int i = 0; i < size; i++)
+    {
+        for (int j = 0; j < size; j++)
+        {
+            matrices[0][i][j] = const_cast<Matrix<T>&>(src1)[i][j];
+            matrices[1][i][j] = const_cast<Matrix<T>&>(src1)[i][j+size];
+            matrices[2][i][j] = const_cast<Matrix<T>&>(src1)[i+size][j];
+            matrices[3][i][j] = const_cast<Matrix<T>&>(src1)[i+size][j+size];
+            matrices[4][i][j] = const_cast<Matrix<T>&>(src2)[i][j];
+            matrices[5][i][j] = const_cast<Matrix<T>&>(src2)[i][j+size]; 
+            matrices[6][i][j] = const_cast<Matrix<T>&>(src2)[i+size][j];
+            matrices[7][i][j] = const_cast<Matrix<T>&>(src2)[i+size][j+size];                       
+        }
+    }
+
+    add(matrices[0], matrices[3], matrices[19]); 
+    add(matrices[4], matrices[7], matrices[20]); 
+    mul(matrices[19], matrices[20], matrices[12]); 
+
+    add(matrices[2], matrices[3], matrices[19]); 
+    mul(matrices[19], matrices[4], matrices[13]); 
+    
+    sub(matrices[5], matrices[7], matrices[20])
+    mul(matrices[0], matrices[20], matrices[14]); 
+    
+    sub(matrices[6], matrices[4], matrices[20]);
+    mul(matrices[3], matrices[20], matrices[15]); 
+    
+    add(matrices[0], matrices[1], matrices[19]); 
+    mul(matrices[19], matrices[7], matrices[16]); 
+    
+    sub(matrices[2], matrices[0], matrices[20]);
+    add(matrices[4], matrices[5], matrices[19]); 
+    mul(matrices[20], matrices[19], matrices[17]); 
+    
+    sub(matrices[1], matrices[3], matrices[20]);
+    add(matrices[6], matrices[7], matrices[19]); 
+    mul(matrices[20], matrices[19], matrices[18]);
+    
+    sub(matrices[18], matrices[16], matrices[20]);
+    add(matrices[12], matrices[15], matrices[19]); 
+    add(matrices[19], matrices[20], matrices[8]); 
+
+    add(matrices[14], matrices[16], matrices[9]); 
+
+    add(matrices[13], matrices[15], matrices[10]); 
+
+    sub(matrices[12], matrices[13], matrices[20]);
+    add(matrices[14], matrices[17], matrices[19]); 
+    add(matrices[20], matrices[19], matrices[11]);
+
+    Matrix<T>* ret = new Matrix<T>(2*size, 2*size);
+    for (int i = 0; i < size; i++)
+    {
+        for (int j = 0; j < size; j++)
+        {
+            ret[i][j] = matrices[8][i][j];
+            ret[i][j+size] = matrices[9][i][j];
+            ret[i+size][j] = matrices[10][i][j];
+            ret[i+size][j+size] = matrices[11][i][j];                                    
+        }
+    }
+    return ret;
 }
 
 template <class T>
