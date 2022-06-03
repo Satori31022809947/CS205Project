@@ -2,7 +2,7 @@
  * @Author: Satori 3102809947@qq.com
  * @Date: 2022-05-26 11:51:58
  * @LastEditors: Satori 3102809947@qq.com
- * @LastEditTime: 2022-06-03 11:06:32
+ * @LastEditTime: 2022-06-03 11:21:47
  * @FilePath: \CS205Project\Matrix.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -689,6 +689,59 @@ T Matrix<T>::determinant()const
     return 0;
 }
 
+template <class T>
+uint32 Matrix<T>::rank()const{
+    try 
+    {
+        if (row == 0 || col == 0)
+            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+        uint32 res=0;
+        uint32 r = row, c = col;
+        Matrix<T> rst(r, c, data);
+        for (int i = 0; i < r && i < c; i++)
+        {
+            int id=-1;
+            for (int j = i; j < r; j++)
+                if (rst[j][i])
+                {
+                    id=j;
+                    break;
+                }
+            if (id==-1)
+            {
+                continue;
+            }
+            res++;
+            if (id!=i)
+            {
+                for (int j = 0; j < c; j++)
+                {
+                    std::swap(rst[id][j],rst[i][j]);
+                }
+            }
+            for (int j = i + 1; j < r; j++)
+            {
+                for (int k = c - 1; k > i; k--)
+                    rst[j][k] =rst[j][k] * rst[i][i];
+                for (int k = c - 1; k > i; k--)
+                {
+                    rst[j][k] -= rst[i][k] * rst[j][i] / rst[i][i];
+                }
+            }
+        }
+        return res;
+    }
+
+    catch(const InvalidArgsException& e)
+    {
+        std::cerr << "InvalidArgsException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return 0;
+}
 
 template <class T>
 T Matrix<T>::max(const Range &row, const Range &col)const
