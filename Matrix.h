@@ -265,8 +265,18 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
             throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__));
         else
         {
-            uint32 r = src1.getRow(), c = src2.getCol();
+            uint32 r = src1.getRow(), c = src2.getCol(), m = src1.getCol();
             Matrix<T>* rst = new Matrix<T>(r, c);
+            for(int k=0;k<m;k++)
+                for(int i=0;i<r;i++)
+                {
+                    T t = src1[i][k];
+                    for(int j=0;j<c;j++)
+                    {
+                        if(mod) rst[i][j]=(rst[i][j]+1ll*t*src2[k][j])%mod;
+                        else rst[i][j]+=t*src2[k][j];
+                    }
+                }
             /* TODO */
             return rst;
         }
@@ -1085,6 +1095,71 @@ Matrix<T>* Matrix<T>::inverse()const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
+}
+template <class T>
+Matrix<T>* Matrix<T>::subMatrix(const Range& row, const Range& col)const
+{
+    Matrix<T> ret = Matrix(row.end-row.start,col.end-col.start,mod);
+    for(int i=0;i<ret.getRow();i++)
+        for(int j=0;j<ret.getCol();j++)
+            ret[i][j]=data[i+row.start][j+col.start];
+    return ret;
+}
+template <class T>
+Matrix<T>* Matrix<T>::reshape(const uint32 _row, const uint32 _col)const
+{
+    try{
+        if(1ll*_row*_col!=1ll*row*col)
+            throw(SizeMismatchException("cannot fit into this shape", __func__, __FILE__, __LINE__));
+        else
+        {
+            Matrix<T> ret = Matrix(_row,_col,mod);
+            for(int i=0;i<_row;i++)
+                for(int j=0;j<_col;j++)
+                {
+                    long long id = i*_col+j;
+                    int x = id/col,y=id%col;
+                    ret[i][j] = data[x][y];
+                }
+            return ret;
+        }
+    }
+    catch(const SizeMismatchException& e)
+    {
+        std::cerr << "InverseNotExistException: " << e.what() <<'\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+}
+template <class T>
+Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
+{
+    try{
+        if(col>=this->col||row.end>=this.row)
+            throw(RangeOutOfBoundException("range out of range", __func__, __FILE__, __LINE__));
+        else
+        {
+            Matrix<T> ret = Matrix(row.end - row.start,1,mod);
+            for(int i=row.start;i<row.end;i++)
+                ret[i-row.start][0] = data[i][col];
+            return ret;
+        }
+    }
+    catch(const RangeOutOfBoundException& e)
+    {
+        std::cerr << "RangeOutOfBoundException: " << e.what() <<'\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+}
+template <class T>
+Matrix<T>* Matrix<T>::convolute(const Matrix& kernel)const
+{
+
 }
 } // namespace usr
 #endif
