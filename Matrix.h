@@ -589,6 +589,15 @@ Matrix<T>* Matrix<T>::toDiagnal()const
                 }
             }
         }
+        for(int i=r-1;i>=0;i--)
+        {
+            for(int j=r-1;j>i;j--)
+            {
+                if(rst[j][j]==0) continue;
+                T t = rst[i][j]/rst[j][j];
+                for(int k=i;k<=j;k++) rst[i][k]-=t*rst[j][j];
+            }
+        }
         return rst;
     }
     else {
@@ -624,6 +633,15 @@ Matrix<T>* Matrix<T>::toDiagnal()const
                 {
                     rst[j][k] = (rst[j][k] - rst[i][k] * rst[j][i]) % mo;
                 }
+            }
+        }
+        for(int i=r-1;i>=0;i--)
+        {
+            for(int j=r-1;j>i;j--)
+            {
+                if(rst[j][j]==0) continue;
+                T t = rst[i][j]*ksm(rst[j][j],mod-2);
+                for(int k=i;k<=j;k++) rst[i][k]=((rst[i][k]-1ll*t*rst[j][j])%mod+mod)%mod;
             }
         }
         return rst;
