@@ -130,7 +130,7 @@ class Matrix {
         */
         Matrix* crossProduct(const Matrix&)const;
 
-        T eigenValue()const;
+        std::vector<std::complex<double>> eigenValue()const;
         Matrix* eigenVector()const;
         Matrix* subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
         Matrix* inverse()const;
@@ -1209,7 +1209,6 @@ Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
     return nullptr;
 }
 template <class T>
-<<<<<<< Updated upstream
 Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const
 {
     try{
@@ -1249,48 +1248,10 @@ Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anch
     }
     return nullptr;
 }
-=======
-Matrix<T>* Matrix<T>::convolute(const Matrix& kernel)const{
-
->>>>>>> Stashed changes
-} // namespace usr
-
-void QR_Decomposition(const Matrix &A,Matrix &Q,Matrix &R){
-    n = A.getrow();
-    for (int i=0;i<n;i++){
-        for (int j=0;j<n;j++){
-            Q[i][j]=R[i][j]=0;
-        }    
-    }
-    for (int k = 0; k < n; k++){
-		double MOD = 0;
-		for (int i = 0; i < n; i++)
-		{
-			MOD += a[i][k] * a[i][k]; 
-		}
-		R[k][k] = sqrt(MOD);
-		for (int i = 0; i < n; i++)
-		{
-			Q[i][k] = A[i][k] / R[k][k]; 
-		}
-
-		for (int i = k + 1; i < n; i++)
-		{
-			for (int j = 0; j < n; j++)
-			{
-				r[k][i] += a[j][i] * q[j][k];
-			}
-			for (int j = 0; j < n; j++)
-			{
-				a[j][i] -= r[k][i] * q[j][k]; 
-			}
-		}
-	}
-}
 
 template <class T>
-vector<complex> Matrix<T>::eigenValue()const{
-
+std::vector<std::complex<double>> Matrix<T>::eigenValue() const
+{
     try{
         if (row == 0 || col == 0)
             throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
@@ -1337,6 +1298,41 @@ vector<complex> Matrix<T>::eigenValue()const{
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
+}
+} // namespace usr
+
+template <class T>
+void QR_Decomposition(const usr::Matrix<T> &A,usr::Matrix<T> &Q,usr::Matrix<T> &R){
+    n = A.getrow();
+    for (int i=0;i<n;i++){
+        for (int j=0;j<n;j++){
+            Q[i][j]=R[i][j]=0;
+        }    
+    }
+    for (int k = 0; k < n; k++){
+		double MOD = 0;
+		for (int i = 0; i < n; i++)
+		{
+			MOD += a[i][k] * a[i][k]; 
+		}
+		R[k][k] = sqrt(MOD);
+		for (int i = 0; i < n; i++)
+		{
+			Q[i][k] = A[i][k] / R[k][k]; 
+		}
+
+		for (int i = k + 1; i < n; i++)
+		{
+			for (int j = 0; j < n; j++)
+			{
+				r[k][i] += a[j][i] * q[j][k];
+			}
+			for (int j = 0; j < n; j++)
+			{
+				a[j][i] -= r[k][i] * q[j][k]; 
+			}
+		}
+	}
 }
 
 template <class T>
