@@ -13,11 +13,13 @@
 #include <iostream>
 #include "Range.h"
 #include "Exception.h"
+#define DEBUG
+#include "MemoryDetect.h"
+#define new DEBUG_NEW
 namespace usr
 {
 
 template <class T>
-
 class Matrix {
     private:
         uint32 col;
@@ -99,10 +101,6 @@ class Matrix {
         void operator*=(const T t);
         bool operator==(const Matrix& m)const;
         T* operator[](uint32 i){ return *(data+i); }
-        void* operator new(size_t sz, char* filename, int line);
-        void* operator new[](size_t sz, char* filename, int line);
-        void operator delete(void* p);
-        void operator delete[](void* p);
         template <class _T>
         friend std::istream& operator>>(std::istream&, Matrix<_T>&);
         template <class _T>
@@ -396,7 +394,7 @@ Matrix<T>* Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) con
     add(matrices[2], matrices[3], matrices[19]); 
     mul(matrices[19], matrices[4], matrices[13]); 
     
-    sub(matrices[5], matrices[7], matrices[20])
+    sub(matrices[5], matrices[7], matrices[20]);
     mul(matrices[0], matrices[20], matrices[14]); 
     
     sub(matrices[6], matrices[4], matrices[20]);
@@ -1345,8 +1343,8 @@ Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anch
                         for(int l=anchor_y-j;l<std::min(kernal.getCol(),col+anchor_y-j);l++)
                         {
                             int x = i-anchor_x+k,y = j-anchor_y+l;
-                            if(mod) (*ret)[i][j]=((*ret)[i][j]+1ll*const_cast<Matrix<T>&>[x][y]*data[i][j])%mod;
-                            else (*ret)[i][j]+=const_cast<Matrix<T>&>[x][y]*data[i][j];
+                            if(mod) (*ret)[i][j]=((*ret)[i][j]+1ll*const_cast<Matrix<T>&>(kernal)[x][y]*data[i][j])%mod;
+                            else (*ret)[i][j]+=const_cast<Matrix<T>&>(kernal)[x][y]*data[i][j];
                         }
                     }
             return ret;
@@ -1422,7 +1420,7 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return std::vector<std::complex<double>>;
+    return std::vector<std::complex<double>>();
 }
 
 template <class T>
@@ -1440,7 +1438,7 @@ Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)co
         for (int i=0;i<n;i++){
             int id=-1;
             for (int j=i;j<n;j++){
-                if (a[j][i]){
+                if (a[j][i] != 0.0){
                     id=j;
                     break;
                 }
