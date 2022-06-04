@@ -1526,5 +1526,4 @@ void QR_Decomposition(Matrix<T>& A,Matrix<T>& Q,Matrix<T>& R){
 } // namespace usr
 
 
-
 #endif
