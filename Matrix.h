@@ -678,11 +678,10 @@ std::ostream& operator<<(std::ostream& os, Matrix<_T>& m)
     }
     return os;
 }
-
 template<class T>
 Matrix<T>* Matrix<T>::toDiagnal()const
 {
-    if (mod==0)
+    #if (mod==0)
     {
         uint32 r = row, c = col;
         Matrix<T>* rst = new Matrix<T>(r,c);
@@ -711,18 +710,20 @@ Matrix<T>* Matrix<T>::toDiagnal()const
                 }
             }
         }
+        cerr<<"-----"<<(*rst)<<std::endl;
         for(int i=r-1;i>=0;i--)
         {
             for(int j=r-1;j>i;j--)
             {
                 if((*rst)[j][j]==0) continue;
                 T t = (*rst)[i][j]/(*rst)[j][j];
-                for(int k=i;k<=j;k++) (*rst)[i][k]-=t*(*rst)[j][j];
+                for(int k=i+1;k<col;k++) (*rst)[i][k]-=t*(*rst)[j][j];
             }
         }
         return rst;
     }
-    else {
+    #else 
+    {
         uint32 r = row, c = col, mo = mod;
         Matrix<T>* rst = new Matrix<T>(r, c, mo);
         for (int i = 0; i < r; i++)
@@ -762,12 +763,13 @@ Matrix<T>* Matrix<T>::toDiagnal()const
             for(int j=r-1;j>i;j--)
             {
                 if((*rst)[j][j]==0) continue;
-                T t = (*rst)[i][j]*ksm((*rst)[j][j],mod-2);
-                for(int k=i;k<=j;k++) (*rst)[i][k]=(((*rst)[i][k]-1ll*t*(*rst)[j][j])%mod+mod)%mod;
+                T t = (*rst)[i][j]*ksm((*rst)[j][j],mod-2,mod);
+                for(int k=i+1;k<col;k++) (*rst)[i][k]=(((*rst)[i][k]-1ll*t*(*rst)[j][j])%mod+mod)%mod;
             }
         }
         return rst;
     }
+    #endif
 }
 template<class T>
 T Matrix<T>::determinant()const
@@ -820,6 +822,7 @@ T Matrix<T>::determinant()const
                         }
                     }
                 }
+                //std::cerr<<"-------------------"<<cerr<<std::endl<<rst<<std::endl;
                 return res;
             }
             #else 
@@ -1211,13 +1214,18 @@ Matrix<T>* Matrix<T>::inverse()const
                     if(j<col) t[i][j]=data[i][j];
                     else t[i][j]=(j-col==i); 
                 }
+            cerr<<(t)<<std::endl;
             Matrix<T>* m = t.toDiagnal();
+            cerr<<(*m)<<std::endl;
             Matrix<T>* ret = new Matrix<T>(row,col,mod);
             for(int i=0;i<row;i++)
                 for(int j=0;j<col;j++)
                 {
-                    if(mod) (*ret)[i][j] = 1ll*(*m)[i][row+j]*ksm((*m)[i][i],mod-2)%mod;
-                    else (*ret)[i][j] = (*m)[i][row+j]/(*m)[i][i];
+                    #if mod>0
+                        (*ret)[i][j] = 1ll*(*m)[i][row+j]*ksm((*m)[i][i],mod-2)%mod;
+                    #else 
+                        (*ret)[i][j] = (*m)[i][row+j]/(*m)[i][i];
+                    #endif
                 }
             delete m;
             return ret;
@@ -1522,6 +1530,12 @@ void QR_Decomposition(Matrix<T>& A,Matrix<T>& Q,Matrix<T>& R){
 			}
 		}
 	}
+}
+uint32 ksm(int a,uint32 x,uint32 mod)
+{
+    uint32 ret = 1;
+    for(;x;x>>=1,a=1ll*a*a%mod) if(x&1) ret = 1ll*ret*a%mod;
+    return ret;
 }
 } // namespace usr
 

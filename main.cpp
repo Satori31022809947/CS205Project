@@ -9,7 +9,14 @@ int main()
 	std::cin>>A;
 	std::cout<<"A = "<<std::endl<<A<<std::endl;
 	std::cout<<"AT = "<<std::endl<<(*A.transpose())<<std::endl;
+	std::cout<<"A = "<<std::endl<<A<<std::endl;
 	std::cout<<"determinant(A) = "<<A.determinant()<<std::endl;
+	std::cout<<"A = "<<std::endl<<A<<std::endl;
+	std::cout<<"toDiagnal(A) = "<<std::endl<<(*A.toDiagnal())<<std::endl;
+	std::cout<<"A = "<<std::endl<<A<<std::endl;
+	Matrix<double> inv_A = (*A.inverse());
+	std::cout<<"inverse(A) = "<<std::endl<<inv_A<<std::endl;
+	std::cout<<*(A*inv_A)<<std::endl<<*(inv_A*A)<<std::endl;
 	vector<std::complex<double>> eigenValue_A =A.eigenValue();
 	for(int i=0;i<eigenValue_A.size();i++)
 		std::cout<<eigenValue_A[i]<<std::endl<<(*A.eigenVector(eigenValue_A[i]))<<std::endl;
