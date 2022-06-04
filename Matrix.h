@@ -13,7 +13,7 @@
 #include <iostream>
 #include "Range.h"
 #include "Exception.h"
-#define DEBUG
+// #define DEBUG
 #include "MemoryDetect.h"
 #define new DEBUG_NEW
 namespace usr
@@ -184,11 +184,11 @@ inline void Matrix<T>::release()
 }
 
 template <class T>
-void Matrix<T>::clone(const Matrix& m) const
+void Matrix<T>::clone(const Matrix<T>& m) const
 {
     for (int i = 0; i < row; i++)
         for (int j = 0; j < col; j++)
-            this->data[i][j] = m[i][j];
+            data[i][j] = const_cast<Matrix<T>&>(m)[i][j];
 }
 
 template <class T>
@@ -428,10 +428,10 @@ Matrix<T>* Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) con
     {
         for (int j = 0; j < size; j++)
         {
-            ret[i][j] = matrices[8][i][j];
-            ret[i][j+size] = matrices[9][i][j];
-            ret[i+size][j] = matrices[10][i][j];
-            ret[i+size][j+size] = matrices[11][i][j];                                    
+            (*ret)[i][j] = matrices[8][i][j];
+            (*ret)[i][j+size] = matrices[9][i][j];
+            (*ret)[i+size][j] = matrices[10][i][j];
+            (*ret)[i+size][j+size] = matrices[11][i][j];                                    
         }
     }
     return ret;
