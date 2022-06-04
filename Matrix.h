@@ -2,7 +2,7 @@
  * @Author: Satori 3102809947@qq.com
  * @Date: 2022-05-26 11:51:58
  * @LastEditors: Satori 3102809947@qq.com
- * @LastEditTime: 2022-06-03 17:48:32
+ * @LastEditTime: 2022-06-04 17:53:54
  * @FilePath: \CS205Project\Matrix.h
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -790,7 +790,7 @@ T Matrix<T>::determinant()const
                 {
                     int id=-1;
                     for (int j = i; j < r; j++)
-                        if (rst[j][i])
+                        if (rst[j][i]!=0.0)
                         {
                             id=j;
                             break;
@@ -1447,6 +1447,8 @@ Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)co
                 if (i==j)a[i][j]=-this->data[i][j]+val;
             }
         }
+        if (std::abs(a.determinant())>1e-9)
+            throw(WrongEigenValueException("eigenvalue is wrong", __func__, __FILE__, __LINE__));
         for (int i=0;i<n;i++){
             int id=-1;
             for (int j=i;j<n;j++){
@@ -1456,7 +1458,7 @@ Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)co
                 }
             }
             if (id==-1){
-                throw(WrongEigenValueException("eigenvalue is wrong", __func__, __FILE__, __LINE__));
+                continue;
             }
             if (id!=i){
                 for (int j=0;j<n;j++){
@@ -1464,7 +1466,7 @@ Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)co
                 }
             }
             for (int j=i+1;j<n;j++){
-                for (int k=n;k>=i;k--){
+                for (int k=n-1;k>=i;k--){
                     a[j][k]-=a[i][k]*a[j][i]/a[i][i];
                 }
             }
@@ -1476,7 +1478,9 @@ Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)co
             for (int j=i+1;j<n;j++){
                 tmp-=a[i][j]*(*res)[0][j];
             }
-            (*res)[0][i]=tmp;
+            if (std::abs(a[i][i])>1e-9){
+                (*res)[0][i]=tmp/(a[i][i]);
+            }
         }
         return res;
     }
