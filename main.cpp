@@ -25,7 +25,7 @@ int main()
 	cout<<"transpose(A) = "<<endl<<*address1<<endl;
 
 	address3.reset(C.conjugate());
-	cout<<"conjugate(A) = "<<endl<<*address3<<endl;
+	cout<<"conjugate(C) = "<<endl<<*address3<<endl;
 	
 	cout<<"determinant(A) = "<<A.determinant()<<endl;
 	cout<<"rank(A) = "<<A.rank()<<endl;
