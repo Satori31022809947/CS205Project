@@ -13,11 +13,19 @@ int main()
 	ptr_cd address3, address4;
 
 	auto A = Matrix<double>(2,2,1,0),B = Matrix<double>(2,2,1,0);
+	auto C = Matrix<complex<double>>(2,2,1,0);
+	C[0][0][0] = complex<double>(1,1);
+	C[0][0][1] = complex<double>(1,1);
+	C[0][1][0] = complex<double>(1,1);
+	C[0][1][1] = complex<double>(1,1);
 	cin>>A;
 	cout<<"A = "<<endl<<A<<endl;
 
 	address1.reset(A.transpose());
 	cout<<"transpose(A) = "<<endl<<*address1<<endl;
+
+	address3.reset(C.conjugate());
+	cout<<"conjugate(A) = "<<endl<<*address3<<endl;
 	
 	cout<<"determinant(A) = "<<A.determinant()<<endl;
 	cout<<"rank(A) = "<<A.rank()<<endl;
@@ -73,7 +81,7 @@ int main()
 	// address1.reset(A.crossProduct(B));
 	// cout<<"crossProduct(AB) = "<<*address1<<endl;
 
-	A.release(), B.release(), address1.reset(), address2.reset(), address3.reset(), address4.reset();
+	A.release(), B.release(), C.release(), address1.reset(), address2.reset(), address3.reset(), address4.reset();
 	MemoryDetech::instance().show();
 	return 0;
 }
