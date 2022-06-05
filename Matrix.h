@@ -16,6 +16,7 @@
 #define DEBUG
 #include "MemoryDetect.h"
 #define new DEBUG_NEW
+#define is_same(P,Q) std::is_same<P,Q>::value
 namespace usr
 {
 
@@ -137,7 +138,7 @@ class Matrix {
         Matrix* subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
         Matrix* inverse()const;
         Matrix* transpose()const;
-        Matrix* hermite()const;
+        Matrix* conjugate()const;
         Matrix* toDiagnal()const;
         Matrix* reshape(const uint32 _row, const uint32 _col)const;
         Matrix* slice(const Range& row, const uint32 col)const;
@@ -1271,6 +1272,38 @@ Matrix<T>* Matrix<T>::transpose()const
                 for(int i=0;i<col;i++)
                     for(int j=0;j<row;j++) 
                         (*ret)[k][i][j]=data[k][j][i];
+            return ret;
+        }
+    }
+    catch(const EmptyMatrixException& e)
+    {
+        std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const Exception& e)
+    {
+        std::cerr << "Fatal: " << e.what() << '\n';
+    }
+    return nullptr;
+}
+template <class T>
+Matrix<T>* Matrix<T>::conjugate()const
+{
+    try{
+        if (isEmpty())
+            throw(EmptyMatrixException("Matrix is empty, can't conjugate", HERE)); 
+        else
+        {
+            Matrix<T>* ret = new Matrix<T>(row,col,getChannel(),mod);
+            for (int k=0;k<getChannel();k++)
+                for(int i=0;i<row;i++)
+                    for(int j=0;j<col;j++) 
+                        if constexpr 
+                        (is_same(T, std::complex<double>) || 
+                        is_same(T, std::complex<int>) || 
+                        is_same(T, std::complex<float>))
+                            (*ret)[k][i][j]=std::conj(data[k][i][j]);
+                        else 
+                            (*ret)[k][i][j]=std::conj(data[k][i][j]).real();
             return ret;
         }
     }
