@@ -13,7 +13,7 @@
 #include <iostream>
 #include "Range.h"
 #include "Exception.h"
-// #define DEBUG
+#define DEBUG
 #include "MemoryDetect.h"
 #define new DEBUG_NEW
 namespace usr
@@ -25,8 +25,9 @@ class Matrix {
         uint32 col;
         uint32 row;
         uint32 mod;
-        T** data;
-        inline void allocate(const uint32 _row, const uint32 _col, const uint32 _mod);
+        // T** data;
+        std::vector<T**> data;
+        inline void allocate(const uint32 _row, const uint32 _col, const uint32 channel, const uint32 _mod);
         Matrix* Addition(const Matrix& src1, const Matrix& src2) const;
         Matrix* Subtraction(const Matrix& src1, const Matrix& src2) const;
         Matrix* Multiplication(const Matrix& src1, const Matrix& src2) const;
@@ -42,7 +43,7 @@ class Matrix {
          * @param {int} row
          * @return {*}
          */
-        Matrix(uint32 row=1,uint32 col=1,uint32 mod=0);
+        Matrix(uint32 row=1,uint32 col=1,uint32 channel=1, uint32 mod=0);
         /** 
          * @description: Shallow copy 
          */
@@ -54,11 +55,13 @@ class Matrix {
 
         inline uint32 getRow()const {return row;}
         inline uint32 getCol()const {return col;}
+        inline uint32 getChannel()const {return data.size();}
+        inline void setMod(uint32 m) {mod = m;}
         
         /** 
          * return true if the matrix is empty (data is equal to nullptr)
          */
-        inline bool isEmpty()const {return data==nullptr;};
+        inline bool isEmpty()const {return data.empty();};
 
         /**
          * return true if the matrix is a vector
@@ -100,7 +103,7 @@ class Matrix {
 		void operator*=(const Matrix& m);
         void operator*=(const T t);
         bool operator==(const Matrix& m)const;
-        T* operator[](uint32 i){ return *(data+i); }
+        T** operator[](uint32 i){ return data.at(i); }
         template <class _T>
         friend std::istream& operator>>(std::istream&, Matrix<_T>&);
         template <class _T>
@@ -142,26 +145,30 @@ class Matrix {
 
 };
 template <class T>
-inline void Matrix<T>::allocate(const uint32 _row, const uint32 _col, const uint32 _mod)
+inline void Matrix<T>::allocate(const uint32 _row, const uint32 _col, const uint32 channel, const uint32 _mod)
 {
     row = _row, col = _col, mod = _mod;
-    data = new T* [row];
-    for (int i = 0; i < row; i++)
-        data[i] = new T[col];
+    for (int i = 0; i < channel; i++)
+    {
+        T** tem = new T* [row];
+        for (int i = 0; i < row; i++)
+            tem[i] = new T[col];
+        data.push_back(tem);
+    }
 }
 
 template <class T>
-Matrix<T>::Matrix(uint32 _row, uint32 _col, uint32 _mod)
+Matrix<T>::Matrix(uint32 _row, uint32 _col, uint32 _channel, uint32 _mod)
 {
-    if (_row==0 || _col==0)
-        throw(InvalidArgsException("row or col can not be zero", __func__, __FILE__, __LINE__));
-    allocate(_row, _col, _mod);
+    if (_row==0 || _col==0 || _channel==0)
+        throw(InvalidArgsException("row or col or channel can not be zero", HERE));
+    allocate(_row, _col, _channel, _mod);
 }
 
 template <class T>
 Matrix<T>::Matrix(const Matrix<T>& m)
 {
-    allocate(m.row, m.col, m.mod);
+    allocate(m.row, m.col, m.getChannel(), m.mod);
     clone(m);
 }
 
@@ -176,19 +183,23 @@ inline void Matrix<T>::release()
 {
     if (isEmpty())
         return;
-    for (int i = 0; i < row; i++)
+    for (int i = 0; i < getChannel(); i++)
+    {
+        for (int j = 0; j < row; j++)
+            delete[] data[i][j];
         delete[] data[i];
-    delete[] data;
-    data = nullptr;
+    }
+    data.clear();
     row = 0, col = 0, mod = 0;
 }
 
 template <class T>
 void Matrix<T>::clone(const Matrix<T>& m) const
 {
-    for (int i = 0; i < row; i++)
-        for (int j = 0; j < col; j++)
-            data[i][j] = const_cast<Matrix<T>&>(m)[i][j];
+    for (int k = 0; k < m.getChannel(); k++)
+        for (int i = 0; i < row; i++)
+            for (int j = 0; j < col; j++)
+                data[k][i][j] = const_cast<Matrix<T>&>(m)[k][i][j];
 }
 
 template <class T>
@@ -197,22 +208,29 @@ Matrix<T>* Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) con
     try
     {
         if (src1.isEmpty() || src2.isEmpty())
-            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty", HERE)); 
+        else if (src1.getChannel()!=src2.getChannel())
+            throw(ChannelMismatchException("Both of the Matrices must have the same Channels", HERE));
         else if (src1.getRow()!=src2.getRow() || src1.getCol()!= src2.getCol())
-            throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__)); 
+            throw(SizeMismatchException("Matrices do not match in size", HERE)); 
         else
         {
-            uint32 r = src1.getRow(), c = src1.getCol();
-            Matrix<T>* rst = new Matrix<T>(r, c);
-            for (int i = 0; i < r; i++)
-                for (int j = 0; j < c; j++)
-                    (*rst)[i][j] = const_cast<Matrix<T>&>(src1)[i][j] + const_cast<Matrix<T>&>(src2)[i][j];
+            uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
+            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            for (int k = 0; k < channel; k++)
+                for (int i = 0; i < r; i++)
+                    for (int j = 0; j < c; j++)
+                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] + const_cast<Matrix<T>&>(src2)[k][i][j];
             return rst;
         }
     }
     catch(const EmptyMatrixException& e)
     {
         std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const ChannelMismatchException& e)
+    {
+        std::cerr << "ChannelMismatchException: " << e.what() << '\n';
     }
     catch(const SizeMismatchException& e)
     {
@@ -231,22 +249,29 @@ Matrix<T>* Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) 
     try
     {
         if (src1.isEmpty() || src2.isEmpty())
-            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty", HERE)); 
+        else if (src1.getChannel()!=src2.getChannel())
+            throw(ChannelMismatchException("Both of the Matrices must have the same Channels", HERE));
         else if (src1.getRow()!=src2.getRow() || src1.getCol()!= src2.getCol())
-            throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__)); 
+            throw(SizeMismatchException("Matrices do not match in size", HERE)); 
         else
         {
-            uint32 r = src1.getRow(), c = src1.getCol();
-            Matrix<T>* rst = new Matrix<T>(r, c);
-            for (int i = 0; i < r; i++)
-                for (int j = 0; j < c; j++)
-                    (*rst)[i][j] = const_cast<Matrix<T>&>(src1)[i][j] - const_cast<Matrix<T>&>(src2)[i][j];
+            uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
+            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            for (int k = 0; k < channel; k++)
+                for (int i = 0; i < r; i++)
+                    for (int j = 0; j < c; j++)
+                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] - const_cast<Matrix<T>&>(src2)[k][i][j];
             return rst;
         }
     }
     catch(const EmptyMatrixException& e)
     {
         std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const ChannelMismatchException& e)
+    {
+        std::cerr << "ChannelMismatchException: " << e.what() << '\n';
     }
     catch(const SizeMismatchException& e)
     {
@@ -265,9 +290,13 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
     try
     {
         if (src1.isEmpty() || src2.isEmpty())
-            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty", HERE)); 
+        else if (src1.getChannel()!=src2.getChannel())
+            throw(ChannelMismatchException("Both of the Matrices must have the same Channels", HERE));
+        else if (src1.getChannel()>1)
+            throw(MultiChannelException("Channels greater than one is not supported", HERE));
         else if (src1.getCol() != src2.getRow())
-            throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__));
+            throw(SizeMismatchException("Matrices do not match in size", HERE));
         else
         {
             uint32 r = src1.getRow(), c = src2.getCol(), m = src1.getCol();
@@ -280,13 +309,13 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
                 for(int k=0;k<m;k++)
                     for(int i=0;i<r;i++)
                     {
-                        T t = const_cast<Matrix<T>&>(src1)[i][k];
+                        T t = const_cast<Matrix<T>&>(src1)[0][i][k];
                         for(int j=0;j<c;j++)
                         {
                             #if mod>0
-                                (*rst)[i][j]=((*rst)[i][j]+1ll*t*const_cast<Matrix<T>&>(src2)[k][j])%mod;
+                                (*rst)[0][i][j]=((*rst)[0][i][j]+1ll*t*const_cast<Matrix<T>&>(src2)[0][k][j])%mod;
                             #else
-                                (*rst)[i][j]+=t*const_cast<Matrix<T>&>(src2)[k][j];
+                                (*rst)[0][i][j]+=t*const_cast<Matrix<T>&>(src2)[0][k][j];
                             #endif
                         }
                     }
@@ -302,6 +331,14 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
     {
         std::cerr << "SizeMismatchException: " << e.what() << '\n';
     }
+    catch(const ChannelMismatchException& e)
+    {
+        std::cerr << "ChannelMismatchException: " << e.what() << '\n';
+    }
+    catch(const MultiChannelException& e)
+    {
+        std::cerr << "MultiChannelException: " << e.what() << '\n';
+    }
     catch(const Exception& e)
     {
         std::cerr << "Fatal: " << e.what() << '\n';
@@ -315,14 +352,15 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
     try
     {
         if (src1.isEmpty())
-            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty", HERE)); 
         else
         {
-            uint32 r = src1.getRow(), c = src1.getCol();
-            Matrix<T>* rst = new Matrix<T>(r, c);
-            for (int i = 0; i < r; i++)
-                for (int j = 0; j < c; j++)
-                    (*rst)[i][j] = const_cast<Matrix<T>&>(src1)[i][j] * src2;
+            uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
+            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            for (int k = 0; k < channel; k++)
+                for (int i = 0; i < r; i++)
+                    for (int j = 0; j < c; j++)
+                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] * src2;
             return rst;
         }
     }
@@ -379,14 +417,14 @@ Matrix<T>* Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) con
     {
         for (int j = 0; j < size; j++)
         {
-            matrices[0][i][j] = const_cast<Matrix<T>&>(src1)[i][j];
-            matrices[1][i][j] = const_cast<Matrix<T>&>(src1)[i][j+size];
-            matrices[2][i][j] = const_cast<Matrix<T>&>(src1)[i+size][j];
-            matrices[3][i][j] = const_cast<Matrix<T>&>(src1)[i+size][j+size];
-            matrices[4][i][j] = const_cast<Matrix<T>&>(src2)[i][j];
-            matrices[5][i][j] = const_cast<Matrix<T>&>(src2)[i][j+size]; 
-            matrices[6][i][j] = const_cast<Matrix<T>&>(src2)[i+size][j];
-            matrices[7][i][j] = const_cast<Matrix<T>&>(src2)[i+size][j+size];                       
+            matrices[0][0][i][j] = const_cast<Matrix<T>&>(src1)[0][i][j];
+            matrices[1][0][i][j] = const_cast<Matrix<T>&>(src1)[0][i][j+size];
+            matrices[2][0][i][j] = const_cast<Matrix<T>&>(src1)[0][i+size][j];
+            matrices[3][0][i][j] = const_cast<Matrix<T>&>(src1)[0][i+size][j+size];
+            matrices[4][0][i][j] = const_cast<Matrix<T>&>(src2)[0][i][j];
+            matrices[5][0][i][j] = const_cast<Matrix<T>&>(src2)[0][i][j+size]; 
+            matrices[6][0][i][j] = const_cast<Matrix<T>&>(src2)[0][i+size][j];
+            matrices[7][0][i][j] = const_cast<Matrix<T>&>(src2)[0][i+size][j+size];                       
         }
     }
 
@@ -431,10 +469,10 @@ Matrix<T>* Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) con
     {
         for (int j = 0; j < size; j++)
         {
-            (*ret)[i][j] = matrices[8][i][j];
-            (*ret)[i][j+size] = matrices[9][i][j];
-            (*ret)[i+size][j] = matrices[10][i][j];
-            (*ret)[i+size][j+size] = matrices[11][i][j];                                    
+            (*ret)[0][i][j] = matrices[8][0][i][j];
+            (*ret)[0][i][j+size] = matrices[9][0][i][j];
+            (*ret)[0][i+size][j] = matrices[10][0][i][j];
+            (*ret)[0][i+size][j+size] = matrices[11][0][i][j];                                    
         }
     }
     return ret;
@@ -446,18 +484,19 @@ Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) con
     try
     {
         if (src1.isEmpty() || src2.isEmpty())
-            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
-        else if (!src1.isSquare() || !src2.isSquare())
-            throw(MatrixNotSquareException("Not square matrix", __func__, __FILE__, __LINE__));
-        else if (src1.getRow() == src2.getRow())
-            throw(SizeMismatchException("Matrices do not match in size", __func__, __FILE__, __LINE__));
-        else if (!src2.isInvertible())
-            throw(InverseNotExistException("Not invertible matrix", __func__, __FILE__, __LINE__));
+            throw(EmptyMatrixException("Matrix is empty", HERE)); 
+        else if (src1.getChannel()!=src2.getChannel())
+            throw(ChannelMismatchException("Both of the Matrices must have the same Channels", HERE));
+        else if (src1.getCol()!=src1.getCol() || src1.getRow()!=src2.getRow())
+            throw(SizeMismatchException("Matrices do not match in size", HERE));
         else
         {
-            Matrix<T>* inv = src2.inverse();
-            Matrix<T>* rst = src1 * inv;
-            delete inv;
+            uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
+            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            for (int k = 0; k < channel; k++)
+                for (int i = 0; i < row; i++)
+                    for (int j = 0; j < col; j++)
+                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] / const_cast<Matrix<T>&>(src2)[k][i][j];
             return rst;
         }
     }
@@ -469,13 +508,9 @@ Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) con
     {
         std::cerr << "SizeMismatchException: " << e.what() << '\n';
     }
-    catch(const MatrixNotSquareException& e)
+    catch(const ChannelMismatchException& e)
     {
-        std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
-    }
-    catch(const InverseNotExistException& e)
-    {
-        std::cerr << "InverseNotExistException: " << e.what() << '\n';
+        std::cerr << "ChannelMismatchException: " << e.what() << '\n';
     }
     catch(const Exception& e)
     {
@@ -490,16 +525,17 @@ Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
     try
     {
         if (src1.isEmpty())
-            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty", HERE)); 
         else if (src2 == 0)
-            throw(ArithmeticException("Divide by Zero", __func__, __FILE__, __LINE__));
+            throw(ArithmeticException("Divide by Zero", HERE));
         else
         {
-            uint32 r = src1.getRow(), c = src1.getCol();
-            Matrix<T>* rst = new Matrix<T>(r, c);
-            for (int i = 0; i < r; i++)
-                for (int j = 0; j < c; j++)
-                    (*rst)[i][j] = const_cast<Matrix<T>&>(src1)[i][j] / src2;
+            uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
+            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            for (int k = 0; k < channel; k++)
+                for (int i = 0; i < r; i++)
+                    for (int j = 0; j < c; j++)
+                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] / src2;
             return rst;
         }
     }
@@ -566,19 +602,29 @@ Matrix<T>* Matrix<T>::operator^(int b)
     try
     {
         if (isEmpty())
-            throw(EmptyMatrixException("Matrix is empty, can't find determinant", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty, can't find determinant", HERE)); 
         else if (!isSquare())
-            throw(MatrixNotSquareException("Matrix must be square", __func__, __FILE__, __LINE__));
+            throw(MatrixNotSquareException("Matrix must be square", HERE));
+        else if (getChannel()>2)
+            throw(MultiChannelException("Channels greater than two is not supported", HERE));
         else
         {
-            Matrix<T>* ret = new Matrix<T>(row,col);
-            for(int i=0;i<row;i++)
-                for(int j=0;j<col;j++) (*ret)[i][j]=(i==j);
-            Matrix<T> cur(row,col);
-            for(int i=0;i<row;i++)
-                for(int j=0;j<col;j++) cur[i][j]=(i==j);
-            for(;b;b>>=1,cur*=(*this))
-                if(b&1) ret*=cur;
+            Matrix<T>* ret = nullptr;
+            if (getChannel()==1)
+            {
+                ret = new Matrix<T>(row,col);
+                for(int i=0;i<row;i++)
+                    for(int j=0;j<col;j++) (*ret)[0][i][j]=(i==j);
+                Matrix<T> cur(row,col);
+                for(int i=0;i<row;i++)
+                    for(int j=0;j<col;j++) cur[0][i][j]=(i==j);
+                for(;b;b>>=1,cur*=(*this))
+                    if(b&1) (*ret)*=cur;
+            }
+            else
+            {
+                ret = new Matrix<T>(row,col,2);
+            }
             return ret;
         }
     }
@@ -590,10 +636,15 @@ Matrix<T>* Matrix<T>::operator^(int b)
     {
         std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
     }
+    catch(const MultiChannelException& e)
+    {
+        std::cerr << "MultiChannelException: " << e.what() << '\n';
+    }
     catch(const Exception& e)
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
+    return nullptr;
 }
 
 template <class T>
@@ -601,10 +652,10 @@ void Matrix<T>::operator=(const Matrix<T>& m)
 {
     if (this != &m)
     {
-        if (!(row==m.row && col==m.col))
+        if (!(row==m.row && col==m.col && getChannel()==m.getChannel()))
         {
             release();
-            allocate(m.row, m.col, m.mod);
+            allocate(m.row, m.col, m.getChannel() ,m.mod);
         }
         clone(m);
     }
@@ -645,19 +696,21 @@ void Matrix<T>::operator*=(const T t)
 template <class T>
 bool Matrix<T>::operator==(const Matrix<T>& m)const
 {
-    if(row!=m.getRow()||col!=m.getCol()) return 0;
-    for(int i=0;i<m.row;i++)
-        for(int j=0;j<m.col;j++)
-            if(data[i][j]!=const_cast<Matrix<T>&>(m)[i][j]) return 0;
+    if(row!=m.getRow()||col!=m.getCol()||getChannel()!=m.getChannel()) return 0;
+    for(int k=0;k<getChannel();k++)
+        for(int i=0;i<m.row;i++)
+            for(int j=0;j<m.col;j++)
+                if(data[k][i][j]!=const_cast<Matrix<T>&>(m)[k][i][j]) return 0;
     return 1;
 }
 
 template <class _T>
 std::istream& operator>>(std::istream& is, Matrix<_T>& m)
 {
-    for (int i = 0; i < m.row; i++)
-        for (int j = 0; j < m.col; j++)
-            is >> m[i][j];
+    for (int k = 0; k < m.getChannel(); k++)
+        for (int i = 0; i < m.row; i++)
+            for (int j = 0; j < m.col; j++)
+                is >> m[k][i][j];
     return is;
 }
 
@@ -669,11 +722,12 @@ std::ostream& operator<<(std::ostream& os, Matrix<_T>& m)
     {
         if(i>0) os<<" ";
         for (int j = 0; j < m.col; j++)
-            if (i == m.row-1 && j == m.col-1)
-                os << m[i][j] << "]";
-            else if(j == m.col-1) os<<m[i][j]<<";";
-            else 
-                os << m[i][j] << ",";
+            for (int k = 0; k < m.getChannel(); k++)
+                if (i == m.row-1 && j == m.col-1 && k == m.getChannel()-1)
+                    os << m[k][i][j] << "]";
+                else if(j == m.col-1 && k == m.getChannel()-1) os<<m[k][i][j]<<";";
+                else 
+                    os << m[k][i][j] << ",";
         os << "\n";
     }
     return os;
@@ -690,7 +744,7 @@ Matrix<T>* Matrix<T>::toDiagnal()const
         {
             int id=-1;
             for (int j = i; j < r; j++)
-                if ((*rst)[j][i])
+                if ((*rst)[0][j][i])
                 {
                     id=j;
                     break;
@@ -699,14 +753,14 @@ Matrix<T>* Matrix<T>::toDiagnal()const
             {
                 for (int j = 0; j < c; j++)
                 {
-                    std::swap((*rst)[id][j],(*rst)[i][j]);
+                    std::swap((*rst)[0][id][j],(*rst)[0][i][j]);
                 }
             }
             for (int j = i + 1; j < r; j++)
             {
                 for (int k = c - 1; k > i; k--)
                 {
-                    (*rst)[j][k] -= (*rst)[i][k] * (*rst)[j][i] / (*rst)[i][i];
+                    (*rst)[0][j][k] -= (*rst)[0][i][k] * (*rst)[0][j][i] / (*rst)[0][i][i];
                 }
             }
         }
@@ -715,9 +769,9 @@ Matrix<T>* Matrix<T>::toDiagnal()const
         {
             for(int j=r-1;j>i;j--)
             {
-                if((*rst)[j][j]==0) continue;
-                T t = (*rst)[i][j]/(*rst)[j][j];
-                for(int k=i+1;k<col;k++) (*rst)[i][k]-=t*(*rst)[j][j];
+                if((*rst)[0][j][j]==0) continue;
+                T t = (*rst)[0][i][j]/(*rst)[0][j][j];
+                for(int k=i+1;k<col;k++) (*rst)[0][i][k]-=t*(*rst)[0][j][j];
             }
         }
         return rst;
@@ -725,12 +779,12 @@ Matrix<T>* Matrix<T>::toDiagnal()const
     #else 
     {
         uint32 r = row, c = col, mo = mod;
-        Matrix<T>* rst = new Matrix<T>(r, c, mo);
+        Matrix<T>* rst = new Matrix<T>(r, c, 1, mo);
         for (int i = 0; i < r; i++)
         {
             int id=-1;
             for (int j = i; j < r; j++)
-                if ((*rst)[j][i])
+                if ((*rst)[0][j][i])
                 {
                     id=j;
                     break;
@@ -739,22 +793,22 @@ Matrix<T>* Matrix<T>::toDiagnal()const
             {
                 for (int j = 0; j < c; j++)
                 {
-                    std::swap((*rst)[id][j],(*rst)[i][j]);
+                    std::swap((*rst)[0][id][j],(*rst)[0][i][j]);
                 }
             }
-            uint32 p=1,k=mo-2,a=(*rst)[i][i];
+            uint32 p=1,k=mo-2,a=(*rst)[0][i][i];
             for (;k;k>>=1){
                 if (k&1)p=1ull* p * a %mo;
                 a=1ull * a *a % mo;
             }
             for (int j= i + 1; j < c; j++){
-                (*rst)[i][j] = 1ull * (*rst)[i][j] * p %mo;   
+                (*rst)[0][i][j] = 1ull * (*rst)[0][i][j] * p %mo;   
             }
             for (int j = i + 1; j < r; j++)
             {
                 for (int k = c - 1; k > i; k--)
                 {
-                    (*rst)[j][k] = ((*rst)[j][k] - (*rst)[i][k] * (*rst)[j][i]) % mo;
+                    (*rst)[0][j][k] = ((*rst)[0][j][k] - (*rst)[0][i][k] * (*rst)[0][j][i]) % mo;
                 }
             }
         }
@@ -762,9 +816,9 @@ Matrix<T>* Matrix<T>::toDiagnal()const
         {
             for(int j=r-1;j>i;j--)
             {
-                if((*rst)[j][j]==0) continue;
-                T t = (*rst)[i][j]*ksm((*rst)[j][j],mod-2,mod);
-                for(int k=i+1;k<col;k++) (*rst)[i][k]=(((*rst)[i][k]-1ll*t*(*rst)[j][j])%mod+mod)%mod;
+                if((*rst)[0][j][j]==0) continue;
+                T t = (*rst)[0][i][j]*ksm((*rst)[0][j][j],mod-2,mod);
+                for(int k=i+1;k<col;k++) (*rst)[0][i][k]=(((*rst)[0][i][k]-1ll*t*(*rst)[0][j][j])%mod+mod)%mod;
             }
         }
         return rst;
@@ -777,9 +831,11 @@ T Matrix<T>::determinant()const
     try
     {
         if (isEmpty())
-            throw(EmptyMatrixException("Matrix is empty, can't find determinant", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty, can't find determinant", HERE)); 
+        else if (getChannel()>1)
+            throw(MultiChannelException("Channel greater than one is not supported", HERE));
         else if (!isSquare())
-            throw(MatrixNotSquareException("Matrix must be square", __func__, __FILE__, __LINE__));
+            throw(MatrixNotSquareException("Matrix must be square", HERE));
         else 
         {   
             #if mod==0
@@ -792,7 +848,7 @@ T Matrix<T>::determinant()const
                 {
                     int id=-1;
                     for (int j = i; j < r; j++)
-                        if (rst[j][i]!=0.0)
+                        if (rst[0][j][i]!=0.0)
                         {
                             id=j;
                             break;
@@ -807,18 +863,18 @@ T Matrix<T>::determinant()const
                         res = -res;
                         for (int j = 0; j < c; j++)
                         {
-                            std::swap(rst[id][j],rst[i][j]);
+                            std::swap(rst[0][id][j],rst[0][i][j]);
                         }
                     }
-                    res = res * rst[i][i];
+                    res = res * rst[0][i][i];
                     for (int j = i + 1; j < r; j++)
                     {
                         for (int k = c - 1; k >= i; k--){
-                            rst[j][k] *= rst[i][i];
+                            rst[0][j][k] *= rst[0][i][i];
                         }
                         for (int k = c - 1; k >= i; k--)
                         {
-                            rst[j][k] -= rst[i][k] * rst[j][i] / rst[i][i];
+                            rst[0][j][k] -= rst[0][i][k] * rst[0][j][i] / rst[0][i][i];
                         }
                     }
                 }
@@ -834,7 +890,7 @@ T Matrix<T>::determinant()const
                 {
                     int id=-1;
                     for (int j = i; j < r; j++)
-                        if (rst[j][i])
+                        if (rst[0][j][i])
                         {
                             id=j;
                             break;
@@ -849,24 +905,24 @@ T Matrix<T>::determinant()const
                         res = -res;
                         for (int j = 0; j < c; j++)
                         {
-                            std::swap(rst[id][j],rst[i][j]);
+                            std::swap(rst[0][id][j],rst[0][i][j]);
                         }
                     }
-                    res = 1ull* res * rst[i][i] % mo;
-                    uint32 p=1,k=mo-2,a=rst[i][i];
+                    res = 1ull* res * rst[0][i][i] % mo;
+                    uint32 p=1,k=mo-2,a=rst[0][i][i];
                     for (;k;k>>=1){
                         if (k&1)p=1ull* p * a %mo;
                         a=1ull * a *a % mo;
                     }
                     for (int j= i + 1; j < c; j++){
-                        rst[i][j] = 1ull * rst[i][j] * p %mo;   
+                        rst[0][i][j] = 1ull * rst[0][i][j] * p %mo;   
                     }
 
                     for (int j = i + 1; j < r; j++)
                     {
                         for (int k = c - 1; k >= i; k--)
                         {
-                            rst[j][k] = (rst[j][k] - rst[i][k] * rst[j][i]) % mo;
+                            rst[0][j][k] = (rst[0][j][k] - rst[0][i][k] * rst[0][j][i]) % mo;
                         }
                     }
                 }
@@ -880,6 +936,10 @@ T Matrix<T>::determinant()const
     catch(const EmptyMatrixException& e)
     {
         std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const MultiChannelException& e)
+    {
+        std::cerr << "MultiChannelException: " << e.what() << '\n';
     }
     catch(const MatrixNotSquareException& e)
     {
@@ -897,7 +957,9 @@ uint32 Matrix<T>::rank()const{
     try 
     {
         if (isEmpty())
-            throw(EmptyMatrixException("Matrix is empty, can't find rank", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty, can't find rank", HERE)); 
+        else if (getChannel()>1)
+            throw(MultiChannelException("Channel greater than one is not supported", HERE));
         uint32 res=0;
         uint32 r = row, c = col;
         Matrix<T> rst(r, c);
@@ -906,7 +968,7 @@ uint32 Matrix<T>::rank()const{
         {
             int id=-1;
             for (int j = i; j < r; j++)
-                if (rst[j][i])
+                if (rst[0][j][i])
                 {
                     id=j;
                     break;
@@ -920,25 +982,28 @@ uint32 Matrix<T>::rank()const{
             {
                 for (int j = 0; j < c; j++)
                 {
-                    std::swap(rst[id][j],rst[i][j]);
+                    std::swap(rst[0][id][j],rst[0][i][j]);
                 }
             }
             for (int j = i + 1; j < r; j++)
             {
                 for (int k = c - 1; k >= i; k--)
-                    rst[j][k] = rst[j][k] * rst[i][i];
+                    rst[0][j][k] = rst[0][j][k] * rst[0][i][i];
                 for (int k = c - 1; k >= i; k--)
                 {
-                    rst[j][k] -= rst[i][k] * rst[j][i] / rst[i][i];
+                    rst[0][j][k] -= rst[0][i][k] * rst[0][j][i] / rst[0][i][i];
                 }
             }
         }
         return res;
     }
-
     catch(const EmptyMatrixException& e)
     {
         std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const MultiChannelException& e)
+    {
+        std::cerr << "MultiChannelException: " << e.what() << '\n';
     }
     catch(const Exception& e)
     {
@@ -953,14 +1018,16 @@ T Matrix<T>::trace()const
     try
     {
         if (isEmpty())
-            throw(EmptyMatrixException("Matrix is empty, can't find trace", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty, can't find trace", HERE)); 
+        else if (getChannel()>1)
+            throw(MultiChannelException("Channel greater than one is not supported", HERE));
         else if (!isSquare())
-            throw(MatrixNotSquareException("Matrix must be square", __func__, __FILE__, __LINE__));
+            throw(MatrixNotSquareException("Matrix must be square", HERE));
         else 
         {   
             T res=0;
             for (int i=0;i<row;i++){
-                res=res+data[i][i];
+                res=res+data[0][i][i];
             }
             return res;
         }
@@ -968,6 +1035,10 @@ T Matrix<T>::trace()const
     catch(const EmptyMatrixException& e)
     {
         std::cerr << "EmptyMatrixException: " << e.what() << '\n';
+    }
+    catch(const MultiChannelException& e)
+    {
+        std::cerr << "MultiChannelException: " << e.what() << '\n';
     }
     catch(const MatrixNotSquareException& e)
     {
@@ -986,16 +1057,17 @@ T Matrix<T>::max(const Range &row, const Range &col)const
     try
     {
         if (row.empty() || col.empty())
-            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+            throw(InvalidArgsException("range can not be zero", HERE));
         else if (row.start >= getRow() || col.start >= getCol())
-            throw(RangeOutOfBoundException("range is out of bound", __func__, __FILE__, __LINE__));
+            throw(RangeOutOfBoundException("range is out of bound", HERE));
         else
         {
-            T m = data[row.start][col.start];
-            for (int i = row.start; i < std::min(getRow(), row.end); i++)
-                for (int j = col.start; j < std::min(getCol(), col.end); j++)
-                    if (m < data[i][j])
-                        m = data[i][j];
+            T m = data[0][row.start][col.start];
+            for (int k = 0; k < getChannel(); k++)
+                for (int i = row.start; i < std::min(getRow(), row.end); i++)
+                    for (int j = col.start; j < std::min(getCol(), col.end); j++)
+                        if (m < data[k][i][j])
+                            m = data[k][i][j];
             return m;
         }
     }
@@ -1020,16 +1092,17 @@ T Matrix<T>::min(const Range &row, const Range &col)const
     try
     {
         if (row.empty() || col.empty())
-            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+            throw(InvalidArgsException("range can not be zero", HERE));
         else if (row.start >= getRow() || col.start >= getCol())
-            throw(RangeOutOfBoundException("range is out of bound", __func__, __FILE__, __LINE__));
+            throw(RangeOutOfBoundException("range is out of bound", HERE));
         else
         {
-            T m = data[row.start][col.start];
-            for (int i = row.start; i < std::min(getRow(), row.end); i++)
-                for (int j = col.start; j < std::min(getCol(), col.end); j++)
-                    if (m > data[i][j])
-                        m = data[i][j];
+            T m = data[0][row.start][col.start];
+            for (int k = 0; k < getChannel(); k++)
+                for (int i = row.start; i < std::min(getRow(), row.end); i++)
+                    for (int j = col.start; j < std::min(getCol(), col.end); j++)
+                        if (m > data[k][i][j])
+                            m = data[k][i][j];
             return m;
         }
     }
@@ -1054,16 +1127,17 @@ T Matrix<T>::avg(const Range &row, const Range &col)const
     try
     {
         if (row.empty() || col.empty())
-            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+            throw(InvalidArgsException("range can not be zero", HERE));
         else if (row.start >= getRow() || col.start >= getCol())
-            throw(RangeOutOfBoundException("range is out of bound", __func__, __FILE__, __LINE__));
+            throw(RangeOutOfBoundException("range is out of bound", HERE));
         else
         {
             T tot = 0;
             uint32 cnt = 0;
-            for (int i = row.start; i < std::min(getRow(), row.end); i++)
-                for (int j = col.start; j < std::min(getCol(), col.end); j++)
-                    tot += data[i][j],cnt++;
+            for (int k = 0; k < getChannel(); k++)
+                for (int i = row.start; i < std::min(getRow(), row.end); i++)
+                    for (int j = col.start; j < std::min(getCol(), col.end); j++)
+                        tot += data[k][i][j],cnt++;                 
             return tot/cnt;
         }
     }
@@ -1088,15 +1162,16 @@ T Matrix<T>::sum(const Range &row, const Range &col)const
     try
     {
         if (row.empty() || col.empty())
-            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+            throw(InvalidArgsException("range can not be zero", HERE));
         else if (row.start >= getRow() || col.start >= getCol())
-            throw(RangeOutOfBoundException("range is out of bound", __func__, __FILE__, __LINE__));
+            throw(RangeOutOfBoundException("range is out of bound", HERE));
         else
         {
             T tot = 0;
-            for (int i = row.start; i < std::min(getRow(), row.end); i++)
-                for (int j = col.start; j < std::min(getCol(), col.end); j++)
-                    tot += data[i][j];
+            for (int k = 0; k < getChannel(); k++)
+                for (int i = row.start; i < std::min(getRow(), row.end); i++)
+                    for (int j = col.start; j < std::min(getCol(), col.end); j++)
+                        tot += data[0][i][j];
             return tot;
         }
     }
@@ -1119,20 +1194,27 @@ T Matrix<T>::dotProduct(const Matrix<T>& m)const
 {
     try{
         if(row*col!=m.getRow()*m.getCol())
-            throw(SizeMismatchException("the total size must be equal", __func__, __FILE__, __LINE__));
+            throw(SizeMismatchException("the total size must be equal", HERE));
+        else if (getChannel() != m.getChannel())
+            throw(ChannelMismatchException("Both of the Matrices must have the same Channels", HERE));
         else
         {
             T tot = 0;
-            for(int i=0;i<row*col;i++)
-            {
-                int rowx = i/col, colx = i%col, rowy = i/m.getCol(), coly = i%m.getCol();
-                tot += data[rowx][colx]*const_cast<Matrix<T>&>(m)[rowy][coly];
-            }
+            for (int k=0;k<getChannel();k++)
+                for(int i=0;i<row*col;i++)
+                {
+                    int rowx = i/col, colx = i%col, rowy = i/m.getCol(), coly = i%m.getCol();
+                    tot += data[k][rowx][colx]*const_cast<Matrix<T>&>(m)[k][rowy][coly];
+                }
             return tot;
         }
-    }catch(SizeMismatchException& e)
+    }catch(const SizeMismatchException& e)
     {
         std::cerr << "SizeMismatchException: "<<e.what()<<'\n';
+    }
+    catch(const ChannelMismatchException& e)
+    {
+        std::cerr << "ChannelMismatchException: " << e.what() << '\n';
     }
     catch(const Exception& e)
     {
@@ -1145,24 +1227,30 @@ Matrix<T>* Matrix<T>::crossProduct(const Matrix<T>& m)const
 {
     try{
         if(row!=1||col!=3||m.getRow()!=1||m.getCol()!=3) 
-            throw(SizeMismatchException("row of both matrix must be 1 and col must be 3", __func__, __FILE__, __LINE__));
-        else if(typeid(data[0][0])!=typeid(m[0][0]))
-            throw(TypeMismatchException("data type in the matrix does not match",__func__, __FILE__, __LINE__));
+            throw(SizeMismatchException("row of both matrix must be 1 and col must be 3", HERE));
+        else if (getChannel()!=m.getChannel())
+            throw(ChannelMismatchException("Both of the Matrices must have the same Channels", HERE));
+        else if (getChannel()>1)
+            throw(MultiChannelException("Channel greater than one is not supported", HERE));
         else
         {
             Matrix<T>* ret = new Matrix<T>(1,3);
-            (*ret)[0][0] = data[0][1]*const_cast<Matrix<T>&>(m)[0][2]-data[0][2]*const_cast<Matrix<T>&>(m)[0][1];
-            (*ret)[0][1] = data[0][2]*const_cast<Matrix<T>&>(m)[0][0]-data[0][0]*const_cast<Matrix<T>&>(m)[0][2];
-            (*ret)[0][2] = data[0][0]*const_cast<Matrix<T>&>(m)[0][1]-data[0][1]*const_cast<Matrix<T>&>(m)[0][0];
+            (*ret)[0][0][0] = data[0][0][1]*const_cast<Matrix<T>&>(m)[0][0][2]-data[0][0][2]*const_cast<Matrix<T>&>(m)[0][0][1];
+            (*ret)[0][0][1] = data[0][0][2]*const_cast<Matrix<T>&>(m)[0][0][0]-data[0][0][0]*const_cast<Matrix<T>&>(m)[0][0][2];
+            (*ret)[0][0][2] = data[0][0][0]*const_cast<Matrix<T>&>(m)[0][0][1]-data[0][0][1]*const_cast<Matrix<T>&>(m)[0][0][0];
             return ret;
         }
     }catch(SizeMismatchException& e)
     {
         std::cerr << "SizeMismatchException: "<<e.what()<<'\n';
     }
-    catch(TypeMismatchException& e)
+    catch(const ChannelMismatchException& e)
     {
-        std::cerr << "TypeMismatchException: "<<e.what()<<'\n';
+        std::cerr << "ChannelMismatchException: " << e.what() << '\n';
+    }
+    catch(const MultiChannelException& e)
+    {
+        std::cerr << "MultiChannelException: " << e.what() << '\n';
     }
     catch(const Exception& e)
     {
@@ -1175,13 +1263,14 @@ Matrix<T>* Matrix<T>::transpose()const
 {   
     try{
         if (isEmpty())
-            throw(EmptyMatrixException("Matrix is empty, can't transpose", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty, can't transpose", HERE)); 
         else
         {
-            Matrix<T>* ret = new Matrix<T>(col,row,mod);
-            for(int i=0;i<col;i++)
-                for(int j=0;j<row;j++) 
-                    (*ret)[i][j]=data[j][i];
+            Matrix<T>* ret = new Matrix<T>(col,row,getChannel(),mod);
+            for (int k=0;k<getChannel();k++)
+                for(int i=0;i<col;i++)
+                    for(int j=0;j<row;j++) 
+                        (*ret)[k][i][j]=data[k][j][i];
             return ret;
         }
     }
@@ -1200,31 +1289,31 @@ Matrix<T>* Matrix<T>::inverse()const
 {
     try{
         if (isEmpty())
-            throw(EmptyMatrixException("Matrix is empty, can't find inverse", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty, can't find inverse", HERE)); 
         else if (!isSquare())
-            throw(MatrixNotSquareException("non-square matrix is not invertible", __func__, __FILE__, __LINE__));
+            throw(MatrixNotSquareException("non-square matrix is not invertible", HERE));
         else if (!isInvertible())
-                throw(InverseNotExistException("singular matrix is not invertible", __func__, __FILE__, __LINE__));
+            throw(InverseNotExistException("singular matrix is not invertible", HERE));
         else
         {
-            Matrix<T> t(row,row+col,mod);
+            Matrix<T> t(row,row+col,1,mod);
             for(int i=0;i<row;i++)
                 for(int j=0;j<row+col;j++)
                 {
-                    if(j<col) t[i][j]=data[i][j];
-                    else t[i][j]=(j-col==i); 
+                    if(j<col) t[0][i][j]=data[0][i][j];
+                    else t[0][i][j]=(j-col==i); 
                 }
             cerr<<(t)<<std::endl;
             Matrix<T>* m = t.toDiagnal();
             cerr<<(*m)<<std::endl;
-            Matrix<T>* ret = new Matrix<T>(row,col,mod);
+            Matrix<T>* ret = new Matrix<T>(row,col,1,mod);
             for(int i=0;i<row;i++)
                 for(int j=0;j<col;j++)
                 {
                     #if mod>0
-                        (*ret)[i][j] = 1ll*(*m)[i][row+j]*ksm((*m)[i][i],mod-2)%mod;
+                        (*ret)[0][i][j] = 1ll*(*m)[0][i][row+j]*ksm((*m)[0][i][i],mod-2)%mod;
                     #else 
-                        (*ret)[i][j] = (*m)[i][row+j]/(*m)[i][i];
+                        (*ret)[0][i][j] = (*m)[0][i][row+j]/(*m)[0][i][i];
                     #endif
                 }
             delete m;
@@ -1255,15 +1344,16 @@ Matrix<T>* Matrix<T>::subMatrix(const Range& row, const Range& col)const
     try
     {
         if (row.empty() || col.empty())
-            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+            throw(InvalidArgsException("range can not be zero", HERE));
         else if (row.start >= getRow() || col.start >= getCol())
-            throw(RangeOutOfBoundException("range is out of bound", __func__, __FILE__, __LINE__));
+            throw(RangeOutOfBoundException("range is out of bound", HERE));
         else
         {
-            Matrix<T>* ret = new Matrix<T>(std::min(getRow(), row.end)-row.start,std::min(getCol(), col.end)-col.start,mod);
-            for(int i=0;i<ret->getRow();i++)
-                for(int j=0;j<ret->getCol();j++)
-                    (*ret)[i][j]=data[i+row.start][j+col.start];
+            Matrix<T>* ret = new Matrix<T>(std::min(getRow(), row.end)-row.start,std::min(getCol(), col.end)-col.start,getChannel(),mod);
+            for (int k=0;k<getChannel();k++)
+                for(int i=0;i<ret->getRow();i++)
+                    for(int j=0;j<ret->getCol();j++)
+                        (*ret)[k][i][j]=data[k][i+row.start][j+col.start];
             return ret;
         }
     }
@@ -1286,17 +1376,18 @@ Matrix<T>* Matrix<T>::reshape(const uint32 _row, const uint32 _col)const
 {
     try{
         if(1ll*_row*_col!=1ll*row*col)
-            throw(SizeMismatchException("cannot fit into this shape", __func__, __FILE__, __LINE__));
+            throw(SizeMismatchException("cannot fit into this shape", HERE));
         else
         {
-            Matrix<T>* ret = new Matrix<T>(_row,_col,mod);
-            for(int i=0;i<_row;i++)
-                for(int j=0;j<_col;j++)
-                {
-                    long long id = i*_col+j;
-                    int x = id/col,y=id%col;
-                    (*ret)[i][j] = data[x][y];
-                }
+            Matrix<T>* ret = new Matrix<T>(_row,_col,getChannel(),mod);
+            for (int k=0;k<getChannel();k++)
+                for(int i=0;i<_row;i++)
+                    for(int j=0;j<_col;j++)
+                    {
+                        long long id = i*_col+j;
+                        int x = id/col,y=id%col;
+                        (*ret)[k][i][j] = data[k][x][y];
+                    }
             return ret;
         }
     }
@@ -1315,14 +1406,15 @@ Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
 {
     try{
         if (row.empty())
-            throw(InvalidArgsException("range can not be zero", __func__, __FILE__, __LINE__));
+            throw(InvalidArgsException("range can not be zero", HERE));
         if(col>=this->col||row.start>=this->row)
-            throw(RangeOutOfBoundException("range out of bound", __func__, __FILE__, __LINE__));
+            throw(RangeOutOfBoundException("range out of bound", HERE));
         else
         {
-            Matrix<T>* ret = new Matrix<T>(std::min(this->getRow(), row.end) - row.start,1,mod);
-            for(int i=row.start;i< ret->getRow();i++)
-                (*ret)[i-row.start][0] = data[i][col];
+            Matrix<T>* ret = new Matrix<T>(std::min(this->getRow(), row.end) - row.start,1,getChannel(),mod);
+            for (int k=0;k<getChannel();k++)
+                for(int i=row.start;i< ret->getRow();i++)
+                    (*ret)[k][i-row.start][0] = data[k][i][col];
             return ret;
         }
     }
@@ -1345,28 +1437,31 @@ template <class T>
 Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const
 {
     try{
-        if (kernal.isEmpty())
-            throw(EmptyMatrixException("Matrix is empty", __func__, __FILE__, __LINE__)); 
-        if(anchor_x>=kernal.getRow()||anchor_y>=kernal.getCol())
-            throw(RangeOutOfBoundException("range out of bound", __func__, __FILE__, __LINE__));
+        if (isEmpty()||kernal.isEmpty())
+            throw(EmptyMatrixException("Matrix is empty", HERE)); 
+        else if (getChannel()!=kernal.getChannel())
+            throw(ChannelMismatchException("Both of the Matrices must have the same Channels", HERE));
+        else if(anchor_x>=kernal.getRow()||anchor_y>=kernal.getCol())
+            throw(RangeOutOfBoundException("range out of bound", HERE));
         else{
             Matrix<T>* ret = new Matrix<T>(row,col);
-            for(int i=0;i<row;i++)
-                for(int j=0;j<col;j++)
-                    for(int k=anchor_x-i;k<std::min(kernal.getRow(),row+anchor_x-i);k++)
-                    {
-                        //i-anc_x+k>=0&&i-anc_x+k<row
-                        //k>=anc_x-i && k< row +anc_x-i
-                        for(int l=anchor_y-j;l<std::min(kernal.getCol(),col+anchor_y-j);l++)
+            for (int m=0;m<getChannel();m++)
+                for(int i=0;i<row;i++)
+                    for(int j=0;j<col;j++)
+                        for(int k=anchor_x-i;k<std::min(kernal.getRow(),row+anchor_x-i);k++)
                         {
-                            int x = i-anchor_x+k,y = j-anchor_y+l;
-                            #if mod>0
-                                (*ret)[i][j]=((*ret)[i][j]+1ll*const_cast<Matrix<T>&>(kernal)[x][y]*data[i][j])%mod;
-                            #else
-                                (*ret)[i][j]+=const_cast<Matrix<T>&>(kernal)[x][y]*data[i][j];
-                            #endif
+                            //i-anc_x+k>=0&&i-anc_x+k<row
+                            //k>=anc_x-i && k< row +anc_x-i
+                            for(int l=anchor_y-j;l<std::min(kernal.getCol(),col+anchor_y-j);l++)
+                            {
+                                int x = i-anchor_x+k,y = j-anchor_y+l;
+                                #if mod>0
+                                    (*ret)[0][i][j]=((*ret)[0][i][j]+1ll*const_cast<Matrix<T>&>(kernal)[m][x][y]*data[m][i][j])%mod;
+                                #else
+                                    (*ret)[0][i][j]+=const_cast<Matrix<T>&>(kernal)[m][x][y]*data[m][i][j];
+                                #endif
+                            }
                         }
-                    }
             return ret;
         }
     }
@@ -1390,9 +1485,11 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
 {
     try{
         if (isEmpty())
-            throw(EmptyMatrixException("Matrix is empty, can't find eigenvalue", __func__, __FILE__, __LINE__)); 
+            throw(EmptyMatrixException("Matrix is empty, can't find eigenvalue", HERE)); 
         else if (!isSquare())
-            throw(MatrixNotSquareException("non-square matrix does not have eigenValue", __func__, __FILE__, __LINE__));
+            throw(MatrixNotSquareException("Non-square matrix does not have eigenValue", HERE));
+        else if (getChannel()>1)
+            throw(MultiChannelException("Channels greater than one is not supported", HERE));
         else
         {
             int n = row;
@@ -1402,10 +1499,10 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
             for (int i=0;i<n;i++){
                 for (int j=0;j<n;j++){
                     if (i==j){
-                        U[i][j]=1;
+                        U[0][i][j]=1;
                     }
                     else{
-                        U[i][j]=0;
+                        U[0][i][j]=0;
                     }
                 }
             }
@@ -1423,7 +1520,7 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
             }
             std::vector<std::complex<double>> res;
             for (int i=0;i<n;i++){
-                res.push_back(A[i][i]);
+                res.push_back(A[0][i][i]);
             }
             return res;
         }
@@ -1435,6 +1532,10 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
     catch(const MatrixNotSquareException& e)
     {
         std::cerr << "MatrixNotSquareException: " << e.what() << '\n';
+    }
+    catch(const MultiChannelException& e)
+    {
+        std::cerr << "MultiChannelException: " << e.what() << '\n';
     }
     catch(const Exception& e)
     {
@@ -1451,16 +1552,16 @@ Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)co
         Matrix<std::complex<double>> a (this->row,this->col);
         for (int i=0;i<n;i++){
             for (int j=0;j<n;j++){
-                a[i][j]=-this->data[i][j];
-                if (i==j)a[i][j]=-this->data[i][j]+val;
+                a[0][i][j]=-this->data[0][i][j];
+                if (i==j)a[0][i][j]=-this->data[0][i][j]+val;
             }
         }
         if (std::abs(a.determinant())>1e-9)
-            throw(WrongEigenValueException("eigenvalue is wrong", __func__, __FILE__, __LINE__));
+            throw(WrongEigenValueException("eigenvalue is wrong", HERE));
         for (int i=0;i<n;i++){
             int id=-1;
             for (int j=i;j<n;j++){
-                if (a[j][i] != 0.0){
+                if (a[0][j][i] != 0.0){
                     id=j;
                     break;
                 }
@@ -1470,24 +1571,24 @@ Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)co
             }
             if (id!=i){
                 for (int j=0;j<n;j++){
-                    swap(a[i][j],a[id][j]);
+                    swap(a[0][i][j],a[0][id][j]);
                 }
             }
             for (int j=i+1;j<n;j++){
                 for (int k=n-1;k>=i;k--){
-                    a[j][k]-=a[i][k]*a[j][i]/a[i][i];
+                    a[0][j][k]-=a[0][i][k]*a[0][j][i]/a[0][i][i];
                 }
             }
         }
         Matrix<std::complex<double>>* res = new Matrix<std::complex<double>>(1,n);
-        (*res)[0][n-1]=1;
+        (*res)[0][0][n-1]=1;
         for (int i=n-2;i>=0;i--){
             std::complex<double>tmp=0;
             for (int j=i+1;j<n;j++){
-                tmp-=a[i][j]*(*res)[0][j];
+                tmp-=a[0][i][j]*(*res)[0][0][j];
             }
-            if (std::abs(a[i][i])>1e-9){
-                (*res)[0][i]=tmp/(a[i][i]);
+            if (std::abs(a[0][i][i])>1e-9){
+                (*res)[0][0][i]=tmp/(a[0][i][i]);
             }
         }
         return res;
@@ -1507,30 +1608,30 @@ void QR_Decomposition(Matrix<T>& A,Matrix<T>& Q,Matrix<T>& R){
     uint32 n = A.getRow();
     for (int i=0;i<n;i++){
         for (int j=0;j<n;j++){
-            Q[i][j]=R[i][j]=0;
+            Q[0][i][j]=R[0][i][j]=0;
         }    
     }
     for (int k = 0; k < n; k++){
 		double MOD = 0;
 		for (int i = 0; i < n; i++)
 		{
-			MOD += A[i][k] * A[i][k]; 
+			MOD += A[0][i][k] * A[0][i][k]; 
 		}
-		R[k][k] = sqrt(MOD);
+		R[0][k][k] = sqrt(MOD);
 		for (int i = 0; i < n; i++)
 		{
-			Q[i][k] = A[i][k] / R[k][k]; 
+			Q[0][i][k] = A[0][i][k] / R[0][k][k]; 
 		}
 
 		for (int i = k + 1; i < n; i++)
 		{
 			for (int j = 0; j < n; j++)
 			{
-				R[k][i] += A[j][i] * Q[j][k];
+				R[0][k][i] += A[0][j][i] * Q[0][j][k];
 			}
 			for (int j = 0; j < n; j++)
 			{
-				A[j][i] -= R[k][i] * Q[j][k]; 
+				A[0][j][i] -= R[0][k][i] * Q[0][j][k]; 
 			}
 		}
 	}

@@ -8,6 +8,7 @@
  */
 #ifndef EXCEPTION_H_
 #define EXCEPTION_H_
+#define HERE __func__, __FILE__, __LINE__
 #include <iostream>
 #include <sstream>
 namespace usr
@@ -52,6 +53,20 @@ class TypeMismatchException: public Exception
     public:
         TypeMismatchException(const char* _err, const std::string& _func, const std::string& _file, const int _line)
         : Exception(_err, _func, _file, _line) {};
+};
+
+class ChannelMismatchException: public Exception
+{
+    public:
+        ChannelMismatchException(const char* _err, const std::string& _func, const std::string& _file, const int _line)
+        : Exception(_err, _func, _file, _line) {};
+};
+
+class MultiChannelException: public Exception
+{
+    public:
+        MultiChannelException(const char* _err, const std::string& _func, const std::string& _file, const int _line)
+        : Exception(_err, _func, _file, _line) {};   
 };
 
 class ArithmeticException: public Exception
