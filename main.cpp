@@ -12,7 +12,7 @@ int main()
 	ptr_double address1, address2;
 	ptr_cd address3, address4;
 
-	auto A = Matrix<double>(2,2,0),B = Matrix<double>(2,2,0);
+	auto A = Matrix<double>(2,2,1,0),B = Matrix<double>(2,2,1,0);
 	cin>>A;
 	cout<<"A = "<<endl<<A<<endl;
 
