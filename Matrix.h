@@ -26,7 +26,6 @@ class Matrix {
         uint32 col;
         uint32 row;
         uint32 mod;
-        // T** data;
         std::vector<T**> data;
         inline void allocate(const uint32 _row, const uint32 _col, const uint32 channel, const uint32 _mod);
         Matrix* Addition(const Matrix& src1, const Matrix& src2) const;
@@ -741,7 +740,7 @@ Matrix<T>* Matrix<T>::toDiagnal()const
         uint32 r = row, c = col;
         Matrix<T>* rst = new Matrix<T>(r,c);
         (*rst) = *this;
-        for (int i = 0; i < r; i++)
+        for (int i = 0; i < r-1; i++)
         {
             int id=-1;
             for (int j = i; j < r; j++)
@@ -759,22 +758,32 @@ Matrix<T>* Matrix<T>::toDiagnal()const
             }
             for (int j = i + 1; j < r; j++)
             {
-                for (int k = c - 1; k > i; k--)
+                for (int k = c - 1; k >= i; k--)
                 {
                     (*rst)[0][j][k] -= (*rst)[0][i][k] * (*rst)[0][j][i] / (*rst)[0][i][i];
                 }
             }
         }
-        cerr<<"-----"<<(*rst)<<std::endl;
         for(int i=r-1;i>=0;i--)
         {
-            for(int j=r-1;j>i;j--)
+            if((*rst)[0][i][i]==0) continue;
+            for(int j=i-1;j>=0;j--)
             {
-                if((*rst)[0][j][j]==0) continue;
-                T t = (*rst)[0][i][j]/(*rst)[0][j][j];
-                for(int k=i+1;k<col;k++) (*rst)[0][i][k]-=t*(*rst)[0][j][j];
+                for (int k = c - 1; k >= i; k--)
+                {
+                    (*rst)[0][j][k] -= (*rst)[0][i][k] * (*rst)[0][j][i] / (*rst)[0][i][i];
+                }
             }
-        }
+        }        
+        // for(int i=r-1;i>=0;i--)
+        // {
+        //     for(int j=r-1;j>i;j--)
+        //     {
+        //         if((*rst)[0][j][j]==0) continue;
+        //         T t = (*rst)[0][i][j]/(*rst)[0][j][j];
+        //         for(int k=i+1;k<col;k++) (*rst)[0][i][k]-=t*(*rst)[0][j][j];
+        //     }
+        // }
         return rst;
     }
     #else 
@@ -1336,9 +1345,7 @@ Matrix<T>* Matrix<T>::inverse()const
                     if(j<col) t[0][i][j]=data[0][i][j];
                     else t[0][i][j]=(j-col==i); 
                 }
-            cerr<<(t)<<std::endl;
             Matrix<T>* m = t.toDiagnal();
-            cerr<<(*m)<<std::endl;
             Matrix<T>* ret = new Matrix<T>(row,col,1,mod);
             for(int i=0;i<row;i++)
                 for(int j=0;j<col;j++)
