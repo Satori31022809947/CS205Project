@@ -11,6 +11,7 @@
 #include <complex>
 #include <vector>
 #include <iostream>
+// #include <opencv2/opencv.hpp>
 #include "Range.h"
 #include "Exception.h"
 #define DEBUG
@@ -37,15 +38,11 @@ class Matrix {
         Matrix* Division(const Matrix& src1, const T& src2) const;
 
     public:
-        /**
-         * @description: construct a Matrix
-         * @param {int} col 
-         * @param {int} row
-         * @return {*}
+        /** @brief constructor
          */
         Matrix(uint32 row=1,uint32 col=1,uint32 channel=1, uint32 mod=0);
         /** 
-         * @description: Shallow copy 
+         * @description: deep copy 
          */
         Matrix(const Matrix&);
         /** @brief destructor
@@ -59,7 +56,7 @@ class Matrix {
         inline void setMod(uint32 m) {mod = m;}
         
         /** 
-         * return true if the matrix is empty (data is equal to nullptr)
+         * return true if the matrix is empty (data is empty)
          */
         inline bool isEmpty()const {return data.empty();};
 
@@ -79,12 +76,12 @@ class Matrix {
         inline bool isInvertible()const {return determinant()!=0;};
 
         /**
-         * @description: Deep copy
+         * @description: deep copy
          */
         void clone(const Matrix& m)const;
 
-        /** @brief Free data
-         *  Set data pointer as nullptr after deleting 
+        /** @brief free data
+         *  clear data after deleting 
          */
         inline void release();
 
@@ -102,6 +99,8 @@ class Matrix {
 		void operator-=(const Matrix& m);
 		void operator*=(const Matrix& m);
         void operator*=(const T t);
+        template <typename _T>
+        operator Matrix<_T>();
         bool operator==(const Matrix& m)const;
         T** operator[](uint32 i){ return data.at(i); }
         template <class _T>
@@ -144,6 +143,7 @@ class Matrix {
         Matrix* convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const;
 
 };
+
 template <class T>
 inline void Matrix<T>::allocate(const uint32 _row, const uint32 _col, const uint32 channel, const uint32 _mod)
 {
@@ -704,6 +704,18 @@ bool Matrix<T>::operator==(const Matrix<T>& m)const
     return 1;
 }
 
+template <class T>
+template <typename _T>
+Matrix<T>::operator Matrix<_T>()
+{
+    Matrix<_T> t(row, col, getChannel());
+    for (int i = 0; i < getChannel(); i++)
+        for (int j = 0; j < row; j++)
+            for (int k = 0; k < col; k++)
+                t[i][j][k] = static_cast<_T>(data[i][j][k]);
+    return t;
+}
+
 template <class _T>
 std::istream& operator>>(std::istream& is, Matrix<_T>& m)
 {
@@ -727,11 +739,19 @@ std::ostream& operator<<(std::ostream& os, Matrix<_T>& m)
                     os << m[k][i][j] << "]";
                 else if(j == m.col-1 && k == m.getChannel()-1) os<<m[k][i][j]<<";";
                 else 
-                    os << m[k][i][j] << ",";
+                    os << m[k][i][j] << ", ";
         os << "\n";
     }
     return os;
 }
+
+uint32 ksm(int a,uint32 x,uint32 mod)
+{
+    uint32 ret = 1;
+    for(;x;x>>=1,a=1ll*a*a%mod) if(x&1) ret = 1ll*ret*a%mod;
+    return ret;
+}
+
 template<class T>
 Matrix<T>* Matrix<T>::toDiagnal()const
 {
@@ -1676,12 +1696,80 @@ void QR_Decomposition(Matrix<T>& A,Matrix<T>& Q,Matrix<T>& R){
 		}
 	}
 }
-uint32 ksm(int a,uint32 x,uint32 mod)
-{
-    uint32 ret = 1;
-    for(;x;x>>=1,a=1ll*a*a%mod) if(x&1) ret = 1ll*ret*a%mod;
-    return ret;
-}
+
+// template <typename _Tp> static inline
+// void dataCopy(const cv::Mat& src, Matrix<_Tp>& dst)
+// {
+//     for(int i = 0; i < src.rows; i++)
+//     {
+//         const _Tp * ptr = src.ptr<_Tp>(i);
+//         for(int j = 0; j < src.cols * src.channels(); j++)
+//             dst[j%src.channels()][i][j/src.channels()] = ptr[j];
+//     } 
+// }
+
+// template <typename _Tp> static inline
+// void cvTousr(const cv::Mat& src, usr::Matrix<_Tp>& dst)
+// {
+//     int r = src.rows, c = src.cols, channel = src.channels();
+//     int type = src.type()&7;
+//     if (type==0)
+//     {
+//         usr::Matrix<uchar> temp1(r,c,channel);
+//         dataCopy<uchar>(src, temp1);
+//         dst = (usr::Matrix<_Tp>)temp1;
+//     }
+//     else if (type==1)
+//     {
+//         usr::Matrix<schar> temp2(r,c,channel);
+//         dataCopy(src, temp2);
+//         dst = (usr::Matrix<_Tp>)temp2;
+//     }
+//     else if (type==2)
+//     {
+//         usr::Matrix<ushort> temp3(r,c,channel);
+//         dataCopy(src, temp3);
+//         dst = (usr::Matrix<_Tp>)temp3;
+//     }
+//     else if (type==3)
+//     {
+//         usr::Matrix<short> temp4(r,c,channel);
+//         dataCopy(src, temp4);
+//         dst = (usr::Matrix<_Tp>)temp4;
+//     }
+//     else if (type==4)
+//     {
+//         usr::Matrix<int> temp5(r,c,channel);
+//         dataCopy(src, temp5);
+//         dst = (usr::Matrix<_Tp>)temp5;
+//     }
+//     else if (type==5)
+//     {
+//         usr::Matrix<float> temp6(r,c,channel);
+//         dataCopy(src, temp6);
+//         dst = (usr::Matrix<_Tp>)temp6;
+//     }                     
+//     else if (type==6)
+//     {
+//         usr::Matrix<double> temp7(r,c,channel);
+//         dataCopy(src, temp7);
+//         dst = (usr::Matrix<_Tp>)temp7;
+//     }
+// }
+
+// template<typename _Tp1, typename _Tp2, int _rows, int _cols> static inline
+// void usrTocv(const usr::Matrix<_Tp1>& src, cv::Matx<_Tp2, _rows, _cols>& dst)
+// {
+//     if (_rows != src.getRow() || _cols != src.getCol())
+//         throw(SizeMismatchException("Two matrices must have the same size", HERE));
+//     _Tp2* p = new _Tp2[_rows*_cols];
+//     for (int i = 0; i < _rows; i++)
+//         for (int j = 0; j < _cols; j++)
+//             p[i*_cols+j] = static_cast<_Tp2>(const_cast<usr::Matrix<_Tp1>&>(src)[0][i][j]);
+//     dst = cv::Matx<_Tp2, _rows, _cols>(p);
+//     delete p;
+// }
+
 } // namespace usr
 
 
