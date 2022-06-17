@@ -29,13 +29,14 @@ class Matrix {
         uint32 mod;
         std::vector<T**> data;
         inline void allocate(const uint32 _row, const uint32 _col, const uint32 channel, const uint32 _mod);
-        Matrix* Addition(const Matrix& src1, const Matrix& src2) const;
-        Matrix* Subtraction(const Matrix& src1, const Matrix& src2) const;
-        Matrix* Multiplication(const Matrix& src1, const Matrix& src2) const;
-        Matrix* Multiplication(const Matrix& src1, const T& src2) const;
-        Matrix* Strassen(const Matrix& src1, const Matrix& src2) const;
-        Matrix* Division(const Matrix& src1, const Matrix& src2) const;
-        Matrix* Division(const Matrix& src1, const T& src2) const;
+        inline void release();
+        Matrix Addition(const Matrix& src1, const Matrix& src2) const;
+        Matrix Subtraction(const Matrix& src1, const Matrix& src2) const;
+        Matrix Multiplication(const Matrix& src1, const Matrix& src2) const;
+        Matrix Multiplication(const Matrix& src1, const T& src2) const;
+        Matrix Strassen(const Matrix& src1, const Matrix& src2) const;
+        Matrix Division(const Matrix& src1, const Matrix& src2) const;
+        Matrix Division(const Matrix& src1, const T& src2) const;
 
     public:
         /** @brief constructor
@@ -80,20 +81,15 @@ class Matrix {
          */
         void clone(const Matrix& m)const;
 
-        /** @brief free data
-         *  clear data after deleting 
-         */
-        inline void release();
-
-        Matrix* operator+(const Matrix& b);
-        Matrix* operator-(const Matrix& b);
-        Matrix* operator*(const Matrix& b);
-        Matrix* operator*(const T& b);
+        Matrix operator+(const Matrix& b);
+        Matrix operator-(const Matrix& b);
+        Matrix operator*(const Matrix& b);
+        Matrix operator*(const T& b);
         template <class _T>
         friend Matrix<_T>* operator*(const _T& a, const Matrix<_T>& b);    
-        Matrix* operator/(const Matrix& b);
-        Matrix* operator/(const T& b);
-        Matrix* operator^(int b);
+        Matrix operator/(const Matrix& b);
+        Matrix operator/(const T& b);
+        Matrix operator^(int b);
         void operator=(const Matrix& m);
 		void operator+=(const Matrix& m);
 		void operator-=(const Matrix& m);
@@ -106,7 +102,7 @@ class Matrix {
         template <class _T>
         friend std::istream& operator>>(std::istream&, Matrix<_T>&);
         template <class _T>
-		friend std::ostream& operator<<(std::ostream&, Matrix<_T>&);
+		friend std::ostream& operator<<(std::ostream&, const Matrix<_T>&);
 
         T determinant()const;
         uint32 rank()const;
@@ -128,19 +124,19 @@ class Matrix {
         3-element vectors of the same shape and size. The result is another 3-element vector
         of the same shape and type as operands.
         */
-        Matrix* crossProduct(const Matrix&)const;
+        Matrix crossProduct(const Matrix&)const;
 
         std::vector<std::complex<double>> eigenValue()const;
         std::vector<Matrix*> eigenVector()const;
-        Matrix<std::complex<double>>* eigenVector(std::complex<double>)const;
-        Matrix* subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
-        Matrix* inverse()const;
-        Matrix* transpose()const;
-        Matrix* conjugate()const;
-        Matrix* toDiagnal()const;
-        Matrix* reshape(const uint32 _row, const uint32 _col)const;
-        Matrix* slice(const Range& row, const uint32 col)const;
-        Matrix* convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const;
+        Matrix<std::complex<double>> eigenVector(std::complex<double>)const;
+        Matrix subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
+        Matrix inverse()const;
+        Matrix transpose()const;
+        Matrix conjugate()const;
+        Matrix toDiagnal()const;
+        Matrix reshape(const uint32 _row, const uint32 _col)const;
+        Matrix slice(const Range& row, const uint32 col)const;
+        Matrix convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const;
 
 };
 
@@ -203,7 +199,7 @@ void Matrix<T>::clone(const Matrix<T>& m) const
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T> Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
     try
     {
@@ -216,11 +212,11 @@ Matrix<T>* Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) con
         else
         {
             uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
-            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            Matrix<T> rst(r, c, channel);
             for (int k = 0; k < channel; k++)
                 for (int i = 0; i < r; i++)
                     for (int j = 0; j < c; j++)
-                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] + const_cast<Matrix<T>&>(src2)[k][i][j];
+                        rst[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] + const_cast<Matrix<T>&>(src2)[k][i][j];
             return rst;
         }
     }
@@ -240,11 +236,11 @@ Matrix<T>* Matrix<T>::Addition(const Matrix<T>& src1, const Matrix<T>& src2) con
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T> Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
     try
     {
@@ -257,11 +253,11 @@ Matrix<T>* Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) 
         else
         {
             uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
-            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            Matrix<T> rst(r, c, channel);
             for (int k = 0; k < channel; k++)
                 for (int i = 0; i < r; i++)
                     for (int j = 0; j < c; j++)
-                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] - const_cast<Matrix<T>&>(src2)[k][i][j];
+                        rst[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] - const_cast<Matrix<T>&>(src2)[k][i][j];
             return rst;
         }
     }
@@ -281,11 +277,11 @@ Matrix<T>* Matrix<T>::Subtraction(const Matrix<T>& src1, const Matrix<T>& src2) 
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
     try
     {
@@ -300,12 +296,11 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
         else
         {
             uint32 r = src1.getRow(), c = src2.getCol(), m = src1.getCol();
-            Matrix<T>* rst = nullptr;
             if (src1.isSquare() && src2.isSquare() && r&1==0 && r >= 256)
-                rst = Strassen(src1, src2);
+                return Strassen(src1, src2);
             else 
             {
-                rst = new Matrix<T>(r, c);
+                Matrix<T> rst(r, c);
                 for(int k=0;k<m;k++)
                     for(int i=0;i<r;i++)
                     {
@@ -313,14 +308,14 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
                         for(int j=0;j<c;j++)
                         {
                             #if mod>0
-                                (*rst)[0][i][j]=((*rst)[0][i][j]+1ll*t*const_cast<Matrix<T>&>(src2)[0][k][j])%mod;
+                                rst[0][i][j]=(rst[0][i][j]+1ll*t*const_cast<Matrix<T>&>(src2)[0][k][j])%mod;
                             #else
-                                (*rst)[0][i][j]+=t*const_cast<Matrix<T>&>(src2)[0][k][j];
+                                rst[0][i][j]+=t*const_cast<Matrix<T>&>(src2)[0][k][j];
                             #endif
                         }
                     }
+                return rst;
             }
-            return rst;
         }
     }
     catch(const EmptyMatrixException& e)
@@ -343,11 +338,11 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const Matrix<T>& src
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
+Matrix<T> Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
 {
     try
     {
@@ -356,11 +351,11 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
         else
         {
             uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
-            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            Matrix<T> rst(r, c, channel);
             for (int k = 0; k < channel; k++)
                 for (int i = 0; i < r; i++)
                     for (int j = 0; j < c; j++)
-                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] * src2;
+                        rst[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] * src2;
             return rst;
         }
     }
@@ -372,35 +367,11 @@ Matrix<T>* Matrix<T>::Multiplication(const Matrix<T>& src1, const T& src2) const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
-}
-
-template <class _T>
-inline void add(Matrix<_T>& a, Matrix<_T>& b, Matrix<_T>& c)
-{
-    Matrix<_T>* temp = a + b;
-    c = *temp;
-    delete temp;
-}
-
-template <class _T>
-inline void sub(Matrix<_T>& a, Matrix<_T>& b, Matrix<_T>& c)
-{
-    Matrix<_T>* temp = a - b;
-    c = *temp;
-    delete temp;
-}
-
-template <class _T>
-inline void mul(Matrix<_T>& a, Matrix<_T>& b, Matrix<_T>& c)
-{
-    Matrix<_T>* temp = a * b;
-    c = *temp;
-    delete temp;
+    return Matrix<T>();
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T> Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
     uint32 size = src1.getRow()/2;
     Matrix<T> matrices[21] = {
@@ -428,58 +399,58 @@ Matrix<T>* Matrix<T>::Strassen(const Matrix<T>& src1, const Matrix<T>& src2) con
         }
     }
 
-    add(matrices[0], matrices[3], matrices[19]); 
-    add(matrices[4], matrices[7], matrices[20]); 
-    mul(matrices[19], matrices[20], matrices[12]); 
+    matrices[19] = matrices[0] + matrices[3];
+    matrices[20] = matrices[4] + matrices[7];
+    matrices[12] = matrices[19] * matrices[20];
 
-    add(matrices[2], matrices[3], matrices[19]); 
-    mul(matrices[19], matrices[4], matrices[13]); 
-    
-    sub(matrices[5], matrices[7], matrices[20]);
-    mul(matrices[0], matrices[20], matrices[14]); 
-    
-    sub(matrices[6], matrices[4], matrices[20]);
-    mul(matrices[3], matrices[20], matrices[15]); 
-    
-    add(matrices[0], matrices[1], matrices[19]); 
-    mul(matrices[19], matrices[7], matrices[16]); 
-    
-    sub(matrices[2], matrices[0], matrices[20]);
-    add(matrices[4], matrices[5], matrices[19]); 
-    mul(matrices[20], matrices[19], matrices[17]); 
-    
-    sub(matrices[1], matrices[3], matrices[20]);
-    add(matrices[6], matrices[7], matrices[19]); 
-    mul(matrices[20], matrices[19], matrices[18]);
-    
-    sub(matrices[18], matrices[16], matrices[20]);
-    add(matrices[12], matrices[15], matrices[19]); 
-    add(matrices[19], matrices[20], matrices[8]); 
+    matrices[19] = matrices[2] + matrices[3];
+    matrices[13] = matrices[19] * matrices[4];
 
-    add(matrices[14], matrices[16], matrices[9]); 
+    matrices[20] = matrices[5] - matrices[7];
+    matrices[14] = matrices[0] * matrices[20];
 
-    add(matrices[13], matrices[15], matrices[10]); 
+    matrices[20] = matrices[6] - matrices[4];
+    matrices[15] = matrices[3] * matrices[20];
+    
+    matrices[19] = matrices[0] + matrices[1];
+    matrices[16] = matrices[19] * matrices[7];
 
-    sub(matrices[12], matrices[13], matrices[20]);
-    add(matrices[14], matrices[17], matrices[19]); 
-    add(matrices[20], matrices[19], matrices[11]);
+    matrices[20] = matrices[2] - matrices[0];
+    matrices[19] = matrices[4] + matrices[5];
+    matrices[17] = matrices[20] * matrices[19];
+    
+    matrices[20] = matrices[1] - matrices[3];
+    matrices[19] = matrices[6] + matrices[7];
+    matrices[18] = matrices[20] * matrices[19];
+    
+    matrices[20] = matrices[18] - matrices[16];
+    matrices[19] = matrices[12] + matrices[15];
+    matrices[8] = matrices[19] + matrices[20];
+    
+    matrices[9] = matrices[14] + matrices[16];
+ 
+    matrices[10] = matrices[13] + matrices[15];
 
-    Matrix<T>* ret = new Matrix<T>(2*size, 2*size);
+    matrices[20] = matrices[12] - matrices[13];
+    matrices[19] = matrices[14] + matrices[17];
+    matrices[17] = matrices[20] + matrices[19];
+
+    Matrix<T> ret(2*size, 2*size);
     for (int i = 0; i < size; i++)
     {
         for (int j = 0; j < size; j++)
         {
-            (*ret)[0][i][j] = matrices[8][0][i][j];
-            (*ret)[0][i][j+size] = matrices[9][0][i][j];
-            (*ret)[0][i+size][j] = matrices[10][0][i][j];
-            (*ret)[0][i+size][j+size] = matrices[11][0][i][j];                                    
+            ret[0][i][j] = matrices[8][0][i][j];
+            ret[0][i][j+size] = matrices[9][0][i][j];
+            ret[0][i+size][j] = matrices[10][0][i][j];
+            ret[0][i+size][j+size] = matrices[11][0][i][j];                                    
         }
     }
     return ret;
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) const
+Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) const
 {
     try
     {
@@ -492,11 +463,11 @@ Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) con
         else
         {
             uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
-            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            Matrix<T> rst(r, c, channel);
             for (int k = 0; k < channel; k++)
                 for (int i = 0; i < row; i++)
                     for (int j = 0; j < col; j++)
-                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] / const_cast<Matrix<T>&>(src2)[k][i][j];
+                        rst[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] / const_cast<Matrix<T>&>(src2)[k][i][j];
             return rst;
         }
     }
@@ -516,11 +487,11 @@ Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const Matrix<T>& src2) con
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
+Matrix<T> Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
 {
     try
     {
@@ -531,11 +502,11 @@ Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
         else
         {
             uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
-            Matrix<T>* rst = new Matrix<T>(r, c, channel);
+            Matrix<T> rst(r, c, channel);
             for (int k = 0; k < channel; k++)
                 for (int i = 0; i < r; i++)
                     for (int j = 0; j < c; j++)
-                        (*rst)[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] / src2;
+                        rst[k][i][j] = const_cast<Matrix<T>&>(src1)[k][i][j] / src2;
             return rst;
         }
     }
@@ -551,53 +522,53 @@ Matrix<T>* Matrix<T>::Division(const Matrix<T>& src1, const T& src2) const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::operator+(const Matrix<T>& m)
+Matrix<T> Matrix<T>::operator+(const Matrix<T>& m)
 {
     return Addition(*this, m);
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::operator-(const Matrix<T>& m)
+Matrix<T> Matrix<T>::operator-(const Matrix<T>& m)
 {
     return Subtraction(*this, m);
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::operator*(const Matrix<T>& m)
+Matrix<T> Matrix<T>::operator*(const Matrix<T>& m)
 {
     return Multiplication(*this, m);
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::operator*(const T& a)
+Matrix<T> Matrix<T>::operator*(const T& a)
 {
     return Multiplication(*this, a);
 }
 
 template <class T>
-Matrix<T>* operator*(const T& a, const Matrix<T>& b)
+Matrix<T> operator*(const T& a, const Matrix<T>& b)
 {
     return b*a;
 }    
 
 template <class T>
-Matrix<T>* Matrix<T>::operator/(const Matrix<T>& m)
+Matrix<T> Matrix<T>::operator/(const Matrix<T>& m)
 {
     return Division(*this, m);
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::operator/(const T& a)
+Matrix<T> Matrix<T>::operator/(const T& a)
 {
     return Division(*this, a);
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::operator^(int b)
+Matrix<T> Matrix<T>::operator^(int b)
 {
     try
     {
@@ -609,22 +580,12 @@ Matrix<T>* Matrix<T>::operator^(int b)
             throw(MultiChannelException("Channels greater than two is not supported", HERE));
         else
         {
-            Matrix<T>* ret = nullptr;
-            if (getChannel()==1)
-            {
-                ret = new Matrix<T>(row,col);
-                for(int i=0;i<row;i++)
-                    for(int j=0;j<col;j++) (*ret)[0][i][j]=(i==j);
-                Matrix<T> cur(row,col);
-                for(int i=0;i<row;i++)
-                    for(int j=0;j<col;j++) cur[0][i][j]=(i==j);
-                for(;b;b>>=1,cur*=(*this))
-                    if(b&1) (*ret)*=cur;
-            }
-            else
-            {
-                ret = new Matrix<T>(row,col,2);
-            }
+            Matrix<T> ret(row,col);
+            for(int i=0;i<row;i++)
+                for(int j=0;j<col;j++) ret[0][i][j]=(i==j);
+            Matrix<T> cur=*this;
+            for(;b;b>>=1,cur*=cur)
+                if(b&1) ret*=cur;
             return ret;
         }
     }
@@ -644,7 +605,7 @@ Matrix<T>* Matrix<T>::operator^(int b)
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 
 template <class T>
@@ -664,33 +625,25 @@ void Matrix<T>::operator=(const Matrix<T>& m)
 template <class T>
 void Matrix<T>::operator+=(const Matrix<T>& m)
 {
-    Matrix<T>* ret = (*this)+m;
-    (*this) = *ret;
-    delete ret;
+    (*this) = (*this)+m;
 }
 
 template <class T>
 void Matrix<T>::operator-=(const Matrix<T>& m)
 {
-    Matrix<T>* ret = (*this)-m;
-    (*this) = *ret;
-    delete ret;
+    (*this) = (*this)-m;
 }
 
 template <class T>
 void Matrix<T>::operator*=(const Matrix<T>& m)
 {
-    Matrix<T>* ret = (*this)*m;
-    (*this) = *ret;
-    delete ret;
+    (*this) = (*this)*m;
 }
 
 template <class T>
 void Matrix<T>::operator*=(const T t)
 {
-    Matrix<T>* ret = (*this)*t;
-    (*this) = *ret;
-    delete ret;
+    (*this) = (*this)*t;
 }
 
 template <class T>
@@ -727,7 +680,7 @@ std::istream& operator>>(std::istream& is, Matrix<_T>& m)
 }
 
 template <class _T>
-std::ostream& operator<<(std::ostream& os, Matrix<_T>& m)
+std::ostream& operator<<(std::ostream& os, const Matrix<_T>& m)
 {
     os << "[";
     for (int i = 0; i < m.row; i++)
@@ -736,10 +689,10 @@ std::ostream& operator<<(std::ostream& os, Matrix<_T>& m)
         for (int j = 0; j < m.col; j++)
             for (int k = 0; k < m.getChannel(); k++)
                 if (i == m.row-1 && j == m.col-1 && k == m.getChannel()-1)
-                    os << m[k][i][j] << "]";
-                else if(j == m.col-1 && k == m.getChannel()-1) os<<m[k][i][j]<<";";
+                    os << const_cast<Matrix<_T>&>(m)[k][i][j] << "]";
+                else if(j == m.col-1 && k == m.getChannel()-1) os<<const_cast<Matrix<_T>&>(m)[k][i][j]<<";";
                 else 
-                    os << m[k][i][j] << ", ";
+                    os << const_cast<Matrix<_T>&>(m)[k][i][j] << ", ";
         os << "\n";
     }
     return os;
@@ -753,18 +706,17 @@ uint32 ksm(int a,uint32 x,uint32 mod)
 }
 
 template<class T>
-Matrix<T>* Matrix<T>::toDiagnal()const
+Matrix<T> Matrix<T>::toDiagnal()const
 {
     #if (mod==0)
     {
         uint32 r = row, c = col;
-        Matrix<T>* rst = new Matrix<T>(r,c);
-        (*rst) = *this;
+        Matrix<T> rst = *this;
         for (int i = 0; i < r-1; i++)
         {
             int id=-1;
             for (int j = i; j < r; j++)
-                if ((*rst)[0][j][i])
+                if (rst[0][j][i])
                 {
                     id=j;
                     break;
@@ -773,25 +725,25 @@ Matrix<T>* Matrix<T>::toDiagnal()const
             {
                 for (int j = 0; j < c; j++)
                 {
-                    std::swap((*rst)[0][id][j],(*rst)[0][i][j]);
+                    std::swap(rst[0][id][j],rst[0][i][j]);
                 }
             }
             for (int j = i + 1; j < r; j++)
             {
                 for (int k = c - 1; k >= i; k--)
                 {
-                    (*rst)[0][j][k] -= (*rst)[0][i][k] * (*rst)[0][j][i] / (*rst)[0][i][i];
+                    rst[0][j][k] -= rst[0][i][k] * rst[0][j][i] / rst[0][i][i];
                 }
             }
         }
         for(int i=r-1;i>=0;i--)
         {
-            if((*rst)[0][i][i]==0) continue;
+            if(rst[0][i][i]==0) continue;
             for(int j=i-1;j>=0;j--)
             {
                 for (int k = c - 1; k >= i; k--)
                 {
-                    (*rst)[0][j][k] -= (*rst)[0][i][k] * (*rst)[0][j][i] / (*rst)[0][i][i];
+                    rst[0][j][k] -= rst[0][i][k] * rst[0][j][i] / rst[0][i][i];
                 }
             }
         }        
@@ -799,9 +751,9 @@ Matrix<T>* Matrix<T>::toDiagnal()const
         // {
         //     for(int j=r-1;j>i;j--)
         //     {
-        //         if((*rst)[0][j][j]==0) continue;
-        //         T t = (*rst)[0][i][j]/(*rst)[0][j][j];
-        //         for(int k=i+1;k<col;k++) (*rst)[0][i][k]-=t*(*rst)[0][j][j];
+        //         if(rst[0][j][j]==0) continue;
+        //         T t = rst[0][i][j]/rst[0][j][j];
+        //         for(int k=i+1;k<col;k++) rst[0][i][k]-=t*rst[0][j][j];
         //     }
         // }
         return rst;
@@ -809,12 +761,12 @@ Matrix<T>* Matrix<T>::toDiagnal()const
     #else 
     {
         uint32 r = row, c = col, mo = mod;
-        Matrix<T>* rst = new Matrix<T>(r, c, 1, mo);
+        Matrix<T> rst(r, c, 1, mo);
         for (int i = 0; i < r; i++)
         {
             int id=-1;
             for (int j = i; j < r; j++)
-                if ((*rst)[0][j][i])
+                if (rst[0][j][i])
                 {
                     id=j;
                     break;
@@ -823,22 +775,22 @@ Matrix<T>* Matrix<T>::toDiagnal()const
             {
                 for (int j = 0; j < c; j++)
                 {
-                    std::swap((*rst)[0][id][j],(*rst)[0][i][j]);
+                    std::swap(rst[0][id][j],rst[0][i][j]);
                 }
             }
-            uint32 p=1,k=mo-2,a=(*rst)[0][i][i];
+            uint32 p=1,k=mo-2,a=rst[0][i][i];
             for (;k;k>>=1){
                 if (k&1)p=1ull* p * a %mo;
                 a=1ull * a *a % mo;
             }
             for (int j= i + 1; j < c; j++){
-                (*rst)[0][i][j] = 1ull * (*rst)[0][i][j] * p %mo;   
+                rst[0][i][j] = 1ull * rst[0][i][j] * p %mo;   
             }
             for (int j = i + 1; j < r; j++)
             {
                 for (int k = c - 1; k > i; k--)
                 {
-                    (*rst)[0][j][k] = ((*rst)[0][j][k] - (*rst)[0][i][k] * (*rst)[0][j][i]) % mo;
+                    rst[0][j][k] = (rst[0][j][k] - rst[0][i][k] * rst[0][j][i]) % mo;
                 }
             }
         }
@@ -846,9 +798,9 @@ Matrix<T>* Matrix<T>::toDiagnal()const
         {
             for(int j=r-1;j>i;j--)
             {
-                if((*rst)[0][j][j]==0) continue;
-                T t = (*rst)[0][i][j]*ksm((*rst)[0][j][j],mod-2,mod);
-                for(int k=i+1;k<col;k++) (*rst)[0][i][k]=(((*rst)[0][i][k]-1ll*t*(*rst)[0][j][j])%mod+mod)%mod;
+                if(rst[0][j][j]==0) continue;
+                T t = rst[0][i][j]*ksm(rst[0][j][j],mod-2,mod);
+                for(int k=i+1;k<col;k++) rst[0][i][k]=((rst[0][i][k]-1ll*t*rst[0][j][j])%mod+mod)%mod;
             }
         }
         return rst;
@@ -1253,7 +1205,7 @@ T Matrix<T>::dotProduct(const Matrix<T>& m)const
     return 0;
 }
 template <class T>
-Matrix<T>* Matrix<T>::crossProduct(const Matrix<T>& m)const
+Matrix<T> Matrix<T>::crossProduct(const Matrix<T>& m)const
 {
     try{
         if(row!=1||col!=3||m.getRow()!=1||m.getCol()!=3) 
@@ -1264,10 +1216,10 @@ Matrix<T>* Matrix<T>::crossProduct(const Matrix<T>& m)const
             throw(MultiChannelException("Channel greater than one is not supported", HERE));
         else
         {
-            Matrix<T>* ret = new Matrix<T>(1,3);
-            (*ret)[0][0][0] = data[0][0][1]*const_cast<Matrix<T>&>(m)[0][0][2]-data[0][0][2]*const_cast<Matrix<T>&>(m)[0][0][1];
-            (*ret)[0][0][1] = data[0][0][2]*const_cast<Matrix<T>&>(m)[0][0][0]-data[0][0][0]*const_cast<Matrix<T>&>(m)[0][0][2];
-            (*ret)[0][0][2] = data[0][0][0]*const_cast<Matrix<T>&>(m)[0][0][1]-data[0][0][1]*const_cast<Matrix<T>&>(m)[0][0][0];
+            Matrix<T> ret(1,3);
+            ret[0][0][0] = data[0][0][1]*const_cast<Matrix<T>&>(m)[0][0][2]-data[0][0][2]*const_cast<Matrix<T>&>(m)[0][0][1];
+            ret[0][0][1] = data[0][0][2]*const_cast<Matrix<T>&>(m)[0][0][0]-data[0][0][0]*const_cast<Matrix<T>&>(m)[0][0][2];
+            ret[0][0][2] = data[0][0][0]*const_cast<Matrix<T>&>(m)[0][0][1]-data[0][0][1]*const_cast<Matrix<T>&>(m)[0][0][0];
             return ret;
         }
     }catch(SizeMismatchException& e)
@@ -1286,21 +1238,21 @@ Matrix<T>* Matrix<T>::crossProduct(const Matrix<T>& m)const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 template <class T>
-Matrix<T>* Matrix<T>::transpose()const
+Matrix<T> Matrix<T>::transpose()const
 {   
     try{
         if (isEmpty())
             throw(EmptyMatrixException("Matrix is empty, can't transpose", HERE)); 
         else
         {
-            Matrix<T>* ret = new Matrix<T>(col,row,getChannel(),mod);
+            Matrix<T> ret(col,row,getChannel(),mod);
             for (int k=0;k<getChannel();k++)
                 for(int i=0;i<col;i++)
                     for(int j=0;j<row;j++) 
-                        (*ret)[k][i][j]=data[k][j][i];
+                        ret[k][i][j]=data[k][j][i];
             return ret;
         }
     }
@@ -1312,17 +1264,17 @@ Matrix<T>* Matrix<T>::transpose()const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 template <class T>
-Matrix<T>* Matrix<T>::conjugate()const
+Matrix<T> Matrix<T>::conjugate()const
 {
     try{
         if (isEmpty())
             throw(EmptyMatrixException("Matrix is empty, can't conjugate", HERE)); 
         else
         {
-            Matrix<T>* ret = new Matrix<T>(row,col,getChannel(),mod);
+            Matrix<T> ret(row,col,getChannel(),mod);
             for (int k=0;k<getChannel();k++)
                 for(int i=0;i<row;i++)
                     for(int j=0;j<col;j++) 
@@ -1330,9 +1282,9 @@ Matrix<T>* Matrix<T>::conjugate()const
                         (is_same(T, std::complex<double>) || 
                         is_same(T, std::complex<int>) || 
                         is_same(T, std::complex<float>))
-                            (*ret)[k][i][j]=std::conj(data[k][i][j]);
+                            ret[k][i][j]=std::conj(data[k][i][j]);
                         else 
-                            (*ret)[k][i][j]=std::conj(data[k][i][j]).real();
+                            ret[k][i][j]=std::conj(data[k][i][j]).real();
             return ret;
         }
     }
@@ -1344,10 +1296,10 @@ Matrix<T>* Matrix<T>::conjugate()const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 template <class T>
-Matrix<T>* Matrix<T>::inverse()const
+Matrix<T> Matrix<T>::inverse()const
 {
     try{
         if (isEmpty())
@@ -1365,18 +1317,17 @@ Matrix<T>* Matrix<T>::inverse()const
                     if(j<col) t[0][i][j]=data[0][i][j];
                     else t[0][i][j]=(j-col==i); 
                 }
-            Matrix<T>* m = t.toDiagnal();
-            Matrix<T>* ret = new Matrix<T>(row,col,1,mod);
+            Matrix<T> m = t.toDiagnal();
+            Matrix<T> ret(row,col,1,mod);
             for(int i=0;i<row;i++)
                 for(int j=0;j<col;j++)
                 {
                     #if mod>0
-                        (*ret)[0][i][j] = 1ll*(*m)[0][i][row+j]*ksm((*m)[0][i][i],mod-2)%mod;
+                        ret[0][i][j] = 1ll*m[0][i][row+j]*ksm(m[0][i][i],mod-2)%mod;
                     #else 
-                        (*ret)[0][i][j] = (*m)[0][i][row+j]/(*m)[0][i][i];
+                        ret[0][i][j] = m[0][i][row+j]/m[0][i][i];
                     #endif
                 }
-            delete m;
             return ret;
         }
     }
@@ -1396,10 +1347,10 @@ Matrix<T>* Matrix<T>::inverse()const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 template <class T>
-Matrix<T>* Matrix<T>::subMatrix(const Range& row, const Range& col)const
+Matrix<T> Matrix<T>::subMatrix(const Range& row, const Range& col)const
 {
     try
     {
@@ -1409,11 +1360,11 @@ Matrix<T>* Matrix<T>::subMatrix(const Range& row, const Range& col)const
             throw(RangeOutOfBoundException("range is out of bound", HERE));
         else
         {
-            Matrix<T>* ret = new Matrix<T>(std::min(getRow(), row.end)-row.start,std::min(getCol(), col.end)-col.start,getChannel(),mod);
+            Matrix<T> ret(std::min(getRow(), row.end)-row.start,std::min(getCol(), col.end)-col.start,getChannel(),mod);
             for (int k=0;k<getChannel();k++)
-                for(int i=0;i<ret->getRow();i++)
-                    for(int j=0;j<ret->getCol();j++)
-                        (*ret)[k][i][j]=data[k][i+row.start][j+col.start];
+                for(int i=0;i<ret.getRow();i++)
+                    for(int j=0;j<ret.getCol();j++)
+                        ret[k][i][j]=data[k][i+row.start][j+col.start];
             return ret;
         }
     }
@@ -1429,24 +1380,24 @@ Matrix<T>* Matrix<T>::subMatrix(const Range& row, const Range& col)const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 template <class T>
-Matrix<T>* Matrix<T>::reshape(const uint32 _row, const uint32 _col)const
+Matrix<T> Matrix<T>::reshape(const uint32 _row, const uint32 _col)const
 {
     try{
         if(1ll*_row*_col!=1ll*row*col)
             throw(SizeMismatchException("cannot fit into this shape", HERE));
         else
         {
-            Matrix<T>* ret = new Matrix<T>(_row,_col,getChannel(),mod);
+            Matrix<T> ret(_row,_col,getChannel(),mod);
             for (int k=0;k<getChannel();k++)
                 for(int i=0;i<_row;i++)
                     for(int j=0;j<_col;j++)
                     {
                         long long id = i*_col+j;
                         int x = id/col,y=id%col;
-                        (*ret)[k][i][j] = data[k][x][y];
+                        ret[k][i][j] = data[k][x][y];
                     }
             return ret;
         }
@@ -1459,10 +1410,10 @@ Matrix<T>* Matrix<T>::reshape(const uint32 _row, const uint32 _col)const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 template <class T>
-Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
+Matrix<T> Matrix<T>::slice(const Range& row, const uint32 col)const
 {
     try{
         if (row.empty())
@@ -1471,10 +1422,10 @@ Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
             throw(RangeOutOfBoundException("range out of bound", HERE));
         else
         {
-            Matrix<T>* ret = new Matrix<T>(std::min(this->getRow(), row.end) - row.start,1,getChannel(),mod);
+            Matrix<T> ret(std::min(this->getRow(), row.end) - row.start,1,getChannel(),mod);
             for (int k=0;k<getChannel();k++)
-                for(int i=row.start;i< ret->getRow();i++)
-                    (*ret)[k][i-row.start][0] = data[k][i][col];
+                for(int i=row.start;i< ret.getRow();i++)
+                    ret[k][i-row.start][0] = data[k][i][col];
             return ret;
         }
     }
@@ -1490,11 +1441,11 @@ Matrix<T>* Matrix<T>::slice(const Range& row, const uint32 col)const
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 
 template <class T>
-Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const
+Matrix<T> Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const
 {
     try{
         if (isEmpty()||kernal.isEmpty())
@@ -1504,7 +1455,7 @@ Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anch
         else if(anchor_x>=kernal.getRow()||anchor_y>=kernal.getCol())
             throw(RangeOutOfBoundException("range out of bound", HERE));
         else{
-            Matrix<T>* ret = new Matrix<T>(row,col);
+            Matrix<T> ret(row,col);
             for (int m=0;m<getChannel();m++)
                 for(int i=0;i<row;i++)
                     for(int j=0;j<col;j++)
@@ -1516,9 +1467,9 @@ Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anch
                             {
                                 int x = i-anchor_x+k,y = j-anchor_y+l;
                                 #if mod>0
-                                    (*ret)[0][i][j]=((*ret)[0][i][j]+1ll*const_cast<Matrix<T>&>(kernal)[m][x][y]*data[m][i][j])%mod;
+                                    ret[0][i][j]=(ret[0][i][j]+1ll*const_cast<Matrix<T>&>(kernal)[m][x][y]*data[m][i][j])%mod;
                                 #else
-                                    (*ret)[0][i][j]+=const_cast<Matrix<T>&>(kernal)[m][x][y]*data[m][i][j];
+                                    ret[0][i][j]+=const_cast<Matrix<T>&>(kernal)[m][x][y]*data[m][i][j];
                                 #endif
                             }
                         }
@@ -1537,7 +1488,7 @@ Matrix<T>* Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anch
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<T>();
 }
 
 template <class T>
@@ -1568,15 +1519,13 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
             }
             Matrix<T> Q(n,n);
             Matrix<T> R(n,n);
-            Matrix<T>* temp = nullptr;
+            Matrix<T> temp(n,n);
             for (int tim=0;tim<50;tim++){
                 QR_Decomposition(A,Q,R);
                 temp = R*Q;
-                A = *temp;
-                delete temp;
+                A = temp;
                 temp = U*Q;
-                U = *temp;
-                delete temp;
+                U = temp;
             }
             std::vector<std::complex<double>> res;
             for (int i=0;i<n;i++){
@@ -1605,7 +1554,7 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
 }
 
 template <class T>
-Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)const{
+Matrix<std::complex<double>> Matrix<T>::eigenVector(std::complex<double> val)const{
     
     try{
         int n=col;
@@ -1640,15 +1589,15 @@ Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)co
                 }
             }
         }
-        Matrix<std::complex<double>>* res = new Matrix<std::complex<double>>(1,n);
-        (*res)[0][0][n-1]=1;
+        Matrix<std::complex<double>> res(1,n);
+        res[0][0][n-1]=1;
         for (int i=n-2;i>=0;i--){
             std::complex<double>tmp=0;
             for (int j=i+1;j<n;j++){
-                tmp-=a[0][i][j]*(*res)[0][0][j];
+                tmp-=a[0][i][j]*res[0][0][j];
             }
             if (std::abs(a[0][i][i])>1e-9){
-                (*res)[0][0][i]=tmp/(a[0][i][i]);
+                res[0][0][i]=tmp/(a[0][i][i]);
             }
         }
         return res;
@@ -1661,7 +1610,7 @@ Matrix<std::complex<double>>* Matrix<T>::eigenVector(std::complex<double> val)co
     {
         std::cerr << "Fatal: " << e.what() << '\n';
     }
-    return nullptr;
+    return Matrix<double>();
 }
 template <class T>
 void QR_Decomposition(Matrix<T>& A,Matrix<T>& Q,Matrix<T>& R){
