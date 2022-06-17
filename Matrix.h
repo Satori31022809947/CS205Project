@@ -1532,9 +1532,13 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
         else
         {
             int n = row;
-            Matrix<T> A(n,n);
-            A = (*this);
-            Matrix<T> U(n,n);
+            Matrix<std::complex<double> > A(n,n);
+            for (int i=0;i<n;i++){
+                for (int j=0;j<n;j++){
+                    A[0][i][j]=data[0][i][j];
+                }
+            }
+            Matrix<std::complex<double> > U(n,n);
             for (int i=0;i<n;i++){
                 for (int j=0;j<n;j++){
                     if (i==j){
@@ -1545,10 +1549,10 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
                     }
                 }
             }
-            Matrix<T> Q(n,n);
-            Matrix<T> R(n,n);
-            Matrix<T> temp(n,n);
-            for (int tim=0;tim<500;tim++){
+            Matrix<std::complex<double> > Q(n,n);
+            Matrix<std::complex<double> > R(n,n);
+            Matrix<std::complex<double> > temp(n,n);
+            for (int tim=0;tim<50;tim++){
                 QR_Decomposition(A,Q,R);
                 temp = R*Q;
                 A = temp;
@@ -1640,8 +1644,7 @@ Matrix<std::complex<double>> Matrix<T>::eigenVector(std::complex<double> val)con
     }
     return Matrix<double>();
 }
-template <class T>
-void QR_Decomposition(Matrix<T>& A,Matrix<T>& Q,Matrix<T>& R){
+void QR_Decomposition(Matrix<std::complex<double> >& A,Matrix<std::complex<double> >& Q,Matrix<std::complex<double> >& R){
     uint32 n = A.getRow();
     for (int i=0;i<n;i++){
         for (int j=0;j<n;j++){
@@ -1652,7 +1655,7 @@ void QR_Decomposition(Matrix<T>& A,Matrix<T>& Q,Matrix<T>& R){
 		double MOD = 0;
 		for (int i = 0; i < n; i++)
 		{
-			MOD += A[0][i][k] * A[0][i][k]; 
+			MOD += abs(A[0][i][k] * A[0][i][k]); 
 		}
 		R[0][k][k] = sqrt(MOD);
 		for (int i = 0; i < n; i++)
