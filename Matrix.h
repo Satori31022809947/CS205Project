@@ -85,7 +85,7 @@ class Matrix {
         Matrix operator*(const Matrix& b);
         Matrix operator*(const T& b);
         template <class _T>
-        friend Matrix<_T>* operator*(const _T& a, const Matrix<_T>& b);    
+        friend Matrix<_T> operator*(const _T& a, const Matrix<_T>& b);    
         Matrix operator/(const Matrix& b);
         Matrix operator/(const T& b);
         Matrix operator^(int b);
@@ -100,6 +100,8 @@ class Matrix {
         T** operator[](uint32 i){ return data.at(i); }
         template <class _T>
         friend std::istream& operator>>(std::istream&, Matrix<_T>&);
+        template <class _T>
+        friend std::istream& operator>>(std::istream&, Matrix<std::complex<_T>>&);
         template <class _T>
 		friend std::ostream& operator<<(std::ostream&, const Matrix<_T>&);
 
@@ -126,7 +128,6 @@ class Matrix {
         Matrix crossProduct(const Matrix&)const;
 
         std::vector<std::complex<double>> eigenValue()const;
-        std::vector<Matrix*> eigenVector()const;
         Matrix<std::complex<double>> eigenVector(std::complex<double>)const;
         Matrix subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
         Matrix inverse()const;
@@ -135,7 +136,7 @@ class Matrix {
         Matrix toDiagnal()const;
         Matrix reshape(const uint32 _row, const uint32 _col)const;
         Matrix slice(const Range& row, const uint32 col)const;
-        Matrix convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const;
+        Matrix convolute(const Matrix& kernel,uint32 anchor_x=-1,uint32 anchor_y=-1)const;
 
 };
 
@@ -548,8 +549,8 @@ Matrix<T> Matrix<T>::operator*(const T& a)
     return Multiplication(*this, a);
 }
 
-template <class T>
-Matrix<T> operator*(const T& a, const Matrix<T>& b)
+template <class _T>
+Matrix<_T> operator*(const _T& a, const Matrix<_T>& b)
 {
     return b*a;
 }    
@@ -675,6 +676,21 @@ std::istream& operator>>(std::istream& is, Matrix<_T>& m)
         for (int i = 0; i < m.row; i++)
             for (int j = 0; j < m.col; j++)
                 is >> m[k][i][j];
+    return is;
+}
+
+template <class _T>
+std::istream& operator>>(std::istream& is, Matrix<std::complex<_T>>& m)
+{
+    for (int k = 0; k < m.getChannel(); k++)
+        for (int i = 0; i < m.row; i++)
+            for (int j = 0; j < m.col; j++)
+            {
+                _T rea, ima;
+                is >> rea >> ima;
+                m[k][i][j].real(rea);
+                m[k][i][j].imag(ima);
+            }
     return is;
 }
 
@@ -1444,21 +1460,25 @@ Matrix<T> Matrix<T>::slice(const Range& row, const uint32 col)const
 }
 
 template <class T>
-Matrix<T> Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 anchor_y)const
+Matrix<T> Matrix<T>::convolute(const Matrix& kernel,uint32 anchor_x,uint32 anchor_y)const
 {
+    if (anchor_x==-1)
+        anchor_x = kernel.getRow()/2;
+    if (anchor_y==-1)
+        anchor_y = kernel.getCol()/2;
     try{
-        if (isEmpty()||kernal.isEmpty())
+        if (isEmpty()||kernel.isEmpty())
             throw(EmptyMatrixException("Matrix is empty", HERE)); 
-        else if (getChannel()!=kernal.getChannel())
+        else if (getChannel()!=kernel.getChannel())
             throw(ChannelMismatchException("Both of the Matrices must have the same Channels", HERE));
-        else if(anchor_x>=kernal.getRow()||anchor_y>=kernal.getCol())
+        else if(anchor_x>=kernel.getRow()||anchor_y>=kernel.getCol())
             throw(RangeOutOfBoundException("range out of bound", HERE));
         else{
             //cout<<"anchor_x = "<<anchor_x<<" anchor_y = "<<anchor_y<<" row = "<<row<<" col = "<<col<<endl;
             Matrix<T> ret(row,col);
             for(int i=0;i<row;i++)
                 for(int j=0;j<col;j++) ret[0][i][j] = 0;
-            int R = kernal.getRow(),C = kernal.getCol();
+            int R = kernel.getRow(),C = kernel.getCol();
             for (int m=0;m<getChannel();m++)
                 for(int i=0;i<row;i++)
                     for(int j=0;j<col;j++)
@@ -1474,9 +1494,9 @@ Matrix<T> Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 ancho
                                 else if(y>=col) y = 2*(col-1)-y;
                                 //int x = i-anchor_x+k,y = j-anchor_y+l;
                                 #if mod>0
-                                    ret[0][i][j]=(ret[0][i][j]+1ll*const_cast<Matrix<T>&>(kernal)[m][k][l]*data[m][x][y])%mod;
+                                    ret[0][i][j]=(ret[0][i][j]+1ll*const_cast<Matrix<T>&>(kernel)[m][k][l]*data[m][x][y])%mod;
                                 #else
-                                    ret[0][i][j]+=const_cast<Matrix<T>&>(kernal)[m][k][l]*data[m][x][y];
+                                    ret[0][i][j]+=const_cast<Matrix<T>&>(kernel)[m][k][l]*data[m][x][y];
                                 #endif
                             }
                         }
@@ -1528,7 +1548,7 @@ std::vector<std::complex<double>> Matrix<T>::eigenValue() const
             Matrix<T> Q(n,n);
             Matrix<T> R(n,n);
             Matrix<T> temp(n,n);
-            for (int tim=0;tim<50;tim++){
+            for (int tim=0;tim<500;tim++){
                 QR_Decomposition(A,Q,R);
                 temp = R*Q;
                 A = temp;

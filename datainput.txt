@@ -1,0 +1,15 @@
+Please input element's min and max
+1 100
+Please input row and col for first test
+2 2
+Please input row and col for second test
+2 2
+Please input row and col for third test
+1 3
+Please input row and col for forth test
+5 5
+Please input row and col for fifth test
+5 5
+Please input row and col for sixth test
+6 6 2 5 5 2
+ 
