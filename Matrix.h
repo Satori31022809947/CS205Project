@@ -1455,24 +1455,33 @@ Matrix<T> Matrix<T>::convolute(const Matrix& kernal,uint32 anchor_x,uint32 ancho
         else if(anchor_x>=kernal.getRow()||anchor_y>=kernal.getCol())
             throw(RangeOutOfBoundException("range out of bound", HERE));
         else{
+            //cout<<"anchor_x = "<<anchor_x<<" anchor_y = "<<anchor_y<<" row = "<<row<<" col = "<<col<<endl;
             Matrix<T> ret(row,col);
+            for(int i=0;i<row;i++)
+                for(int j=0;j<col;j++) ret[0][i][j] = 0;
+            int R = kernal.getRow(),C = kernal.getCol();
             for (int m=0;m<getChannel();m++)
                 for(int i=0;i<row;i++)
                     for(int j=0;j<col;j++)
-                        for(int k=anchor_x-i;k<std::min(kernal.getRow(),row+anchor_x-i);k++)
+                    {
+                        for(int k=0;k<R;k++)
                         {
-                            //i-anc_x+k>=0&&i-anc_x+k<row
-                            //k>=anc_x-i && k< row +anc_x-i
-                            for(int l=anchor_y-j;l<std::min(kernal.getCol(),col+anchor_y-j);l++)
+                            for(int l=0;l<C;l++)
                             {
-                                int x = i-anchor_x+k,y = j-anchor_y+l;
+                                int x = i-anchor_x+k,y=j-anchor_y+l;
+                                if(x<0) x=-x;
+                                else if(x>=row) x = 2*(row-1)-x;
+                                if(y<0) y=-y;
+                                else if(y>=col) y = 2*(col-1)-y;
+                                //int x = i-anchor_x+k,y = j-anchor_y+l;
                                 #if mod>0
-                                    ret[0][i][j]=(ret[0][i][j]+1ll*const_cast<Matrix<T>&>(kernal)[m][x][y]*data[m][i][j])%mod;
+                                    ret[0][i][j]=(ret[0][i][j]+1ll*const_cast<Matrix<T>&>(kernal)[m][k][l]*data[m][x][y])%mod;
                                 #else
-                                    ret[0][i][j]+=const_cast<Matrix<T>&>(kernal)[m][x][y]*data[m][i][j];
+                                    ret[0][i][j]+=const_cast<Matrix<T>&>(kernal)[m][k][l]*data[m][x][y];
                                 #endif
                             }
                         }
+                    }
             return ret;
         }
     }
