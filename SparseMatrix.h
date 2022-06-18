@@ -57,6 +57,24 @@ class SparseMatrix {
         inline uint32 getCol()const {return col;}
         inline uint32 getChannel()const {return data.size();}
         inline void setMod(uint32 m) {mod = m;}
+        inline void setVal(uint32 id,uint32 x,uint32 y,T v){
+            try{
+                if (id>=getChannel()){
+                    throw(MultiChannelException("Channel greater than one is not supported", HERE));
+                }
+                if (x >= getRow() || y >= getCol())
+                    throw(RangeOutOfBoundException("range is out of bound", HERE));
+                data[id][make_pair(x,y)]=v;
+            }
+            catch(const RangeOutOfBoundException& e)
+            {
+                std::cerr << "RangeOutOfBoundException: " << e.what() << '\n';
+            }
+            catch(const MultiChannelException& e)
+            {
+                std::cerr << "MultiChannelException: " << e.what() << '\n';
+            }
+        }
         
         /** 
          * return true if the matrix is empty (data is empty)
