@@ -134,7 +134,7 @@ class Matrix {
         Matrix transpose()const;
         Matrix conjugate()const;
         Matrix toDiagnal()const;
-        Matrix reshape(const uint32 _row, const uint32 _col)const;
+        Matrix reshape(const uint32 n, const uint32 _row)const;
         Matrix slice(const Range& row, const uint32 col)const;
         Matrix convolute(const Matrix& kernel,uint32 anchor_x=-1,uint32 anchor_y=-1)const;
 
@@ -1398,22 +1398,26 @@ Matrix<T> Matrix<T>::subMatrix(const Range& row, const Range& col)const
     return Matrix<T>();
 }
 template <class T>
-Matrix<T> Matrix<T>::reshape(const uint32 _row, const uint32 _col)const
+Matrix<T> Matrix<T>::reshape(const uint32 n, const uint32 _row)const
 {
     try{
-        if(1ll*_row*_col!=1ll*row*col)
+        if(n != 0 && 1ll*row*col*getChannel() % 1ll*_row*n != 0 || row*col % _row != 0)
             throw(SizeMismatchException("cannot fit into this shape", HERE));
         else
         {
-            Matrix<T> ret(_row,_col,getChannel(),mod);
-            for (int k=0;k<getChannel();k++)
-                for(int i=0;i<_row;i++)
-                    for(int j=0;j<_col;j++)
-                    {
-                        long long id = i*_col+j;
-                        int x = id/col,y=id%col;
-                        ret[k][i][j] = data[k][x][y];
-                    }
+            uint32 channel = (n!=0)?n:getChannel();
+            Matrix<T> ret(_row, 1ll*row*col*getChannel()/1ll*_row*channel, channel,mod);
+            T element[row*col*getChannel()];
+            int t = 0;
+            for (int i = 0; i < row; i++)
+                for (int j = 0; j < col; j++)
+                    for (int k = 0; k < getChannel(); k++)
+                        element[t++] = data[k][i][j];
+            t = 0;
+            for (int i = 0; i < ret.getRow(); i++)
+                for (int j = 0; j < ret.getCol(); j++)
+                    for (int k = 0; k < ret.getChannel(); k++)
+                        ret[k][i][j] = element[t++];
             return ret;
         }
     }
@@ -1517,6 +1521,39 @@ Matrix<T> Matrix<T>::convolute(const Matrix& kernel,uint32 anchor_x,uint32 ancho
         std::cerr << "Fatal: " << e.what() << '\n';
     }
     return Matrix<T>();
+}
+
+void QR_Decomposition(Matrix<std::complex<double> >& A,Matrix<std::complex<double> >& Q,Matrix<std::complex<double> >& R){
+    uint32 n = A.getRow();
+    for (int i=0;i<n;i++){
+        for (int j=0;j<n;j++){
+            Q[0][i][j]=R[0][i][j]=0;
+        }    
+    }
+    for (int k = 0; k < n; k++){
+		double MOD = 0;
+		for (int i = 0; i < n; i++)
+		{
+			MOD += abs(A[0][i][k] * A[0][i][k]); 
+		}
+		R[0][k][k] = sqrt(MOD);
+		for (int i = 0; i < n; i++)
+		{
+			Q[0][i][k] = A[0][i][k] / R[0][k][k]; 
+		}
+
+		for (int i = k + 1; i < n; i++)
+		{
+			for (int j = 0; j < n; j++)
+			{
+				R[0][k][i] += A[0][j][i] * Q[0][j][k];
+			}
+			for (int j = 0; j < n; j++)
+			{
+				A[0][j][i] -= R[0][k][i] * Q[0][j][k]; 
+			}
+		}
+	}
 }
 
 template <class T>
@@ -1644,38 +1681,7 @@ Matrix<std::complex<double>> Matrix<T>::eigenVector(std::complex<double> val)con
     }
     return Matrix<double>();
 }
-void QR_Decomposition(Matrix<std::complex<double> >& A,Matrix<std::complex<double> >& Q,Matrix<std::complex<double> >& R){
-    uint32 n = A.getRow();
-    for (int i=0;i<n;i++){
-        for (int j=0;j<n;j++){
-            Q[0][i][j]=R[0][i][j]=0;
-        }    
-    }
-    for (int k = 0; k < n; k++){
-		double MOD = 0;
-		for (int i = 0; i < n; i++)
-		{
-			MOD += abs(A[0][i][k] * A[0][i][k]); 
-		}
-		R[0][k][k] = sqrt(MOD);
-		for (int i = 0; i < n; i++)
-		{
-			Q[0][i][k] = A[0][i][k] / R[0][k][k]; 
-		}
 
-		for (int i = k + 1; i < n; i++)
-		{
-			for (int j = 0; j < n; j++)
-			{
-				R[0][k][i] += A[0][j][i] * Q[0][j][k];
-			}
-			for (int j = 0; j < n; j++)
-			{
-				A[0][j][i] -= R[0][k][i] * Q[0][j][k]; 
-			}
-		}
-	}
-}
 
 } // namespace usr
 

@@ -1,15 +1,16 @@
 Please input element's min and max
 1 100
-Please input row and col for first test
+Please input row and col for first test(basic)
 2 2
-Please input row and col for second test
+Please input row and col for second test(eigen)
 2 2
-Please input row and col for third test
+Please input row and col for third test(cross)
 1 3
-Please input row and col for forth test
+Please input row and col for forth test(dot)
 5 5
-Please input row and col for fifth test
+Please input row and col and channel for fifth test(convolute)
+6 6 1 3 3 1
+Please input row and col for sixth test(conjugate)
 5 5
-Please input row and col for sixth test
-6 6 2 5 5 2
+
  

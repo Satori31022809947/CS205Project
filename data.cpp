@@ -5,6 +5,8 @@ using namespace std;
 inline int read();
 int main()
 {
+    freopen("datainput.txt", "r", stdin);
+    freopen("data.in", "w", stdout);
     int max = read(), min = read();
     random_device rd;
     default_random_engine eng(rd());
@@ -43,6 +45,7 @@ int main()
     {
         printf("%f ", distr(eng));
     }
+    putchar('\n');
     printf("%d %d\n", row, col);
     for (uint32_t i = 0; i < row*col; i++)
     {
@@ -57,6 +60,7 @@ int main()
     {
         printf("%f ", distr(eng));
     }
+    putchar('\n');
     printf("%d %d\n", row, col);
     for (uint32_t i = 0; i < row*col; i++)
     {
@@ -65,24 +69,25 @@ int main()
     putchar('\n');
 
     // test5
-    row = read(), col = read();
-    printf("%d %d\n", row, col);
-    for (uint32_t i = 0; i < 2*row*col; i++)
+    row = read(), col = read(), channel = read();
+    printf("%d %d %d\n", row, col, channel);
+    for (int i = 0; i < row*col*channel; i++)
+    {
+        printf("%f ", distr(eng));
+    }
+    putchar('\n');
+    row = read(), col = read(), channel = read();
+    printf("%d %d %d\n", row, col, channel);
+    for (int i = 0; i < row*col*channel; i++)
     {
         printf("%f ", distr(eng));
     }
     putchar('\n');
 
     // test6
-    row = read(), col = read(), channel = read();
-    printf("%d %d %d ", row, col, channel);
-    for (int i = 0; i < row*col*channel; i++)
-    {
-        printf("%f ", distr(eng));
-    }
-    row = read(), col = read(), channel = read();
-    printf("%d %d %d\n", row, col, channel);
-    for (int i = 0; i < row*col*channel; i++)
+    row = read(), col = read();
+    printf("%d %d\n", row, col);
+    for (uint32_t i = 0; i < 2*row*col; i++)
     {
         printf("%f ", distr(eng));
     }

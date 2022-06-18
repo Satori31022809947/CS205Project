@@ -12,7 +12,7 @@ using namespace std;
 using namespace usr;
 int main()
 {
-
+    freopen("data.in", "r", stdin);
     uint32 row1, row2, col1, col2, channel1, channel2;
     cout << "Test1: basic operation" << endl;
     {
@@ -31,7 +31,7 @@ int main()
         cout<<"gaussian elimination = \n"<<usr1.toDiagnal()<<endl;
         cout<<"submatrix = \n"<<usr1.subMatrix(Range(0, 2), Range(col1/2,col1))<<endl;
         cout<<"slice = \n"<<usr1.slice(Range(0,2), col1/2)<<endl;
-        cout<<"reshape = \n"<<usr1.reshape(2,2)<<endl;
+        cout<<"reshape = \n"<<usr1.reshape(0,row1/2)<<endl;
     }
 
     cout << "Test2: eigenvalue and eigenvector" << endl;
@@ -47,7 +47,8 @@ int main()
         putchar('\n');
         cout<<"eigenvector = \n";
         for (int i = 0; i < eigenvalue.size(); i++)
-            cout << usr1.eigenVector(eigenvalue[i]) << endl;
+            cout << usr1.eigenVector(eigenvalue[i]);
+        putchar('\n');
     }
 
     cout << "Test3: cross product" << endl;
@@ -72,18 +73,10 @@ int main()
         cin >> usr2;
         cout << "dotproduct = \n";
         cout << usr1.dotProduct(usr2) << endl;
+        putchar('\n');
     }
 
-    cout << "Test5: conjugation" << endl;
-    {
-        cin >> row1 >> col1; 
-        Matrix<complex<double>> usr1(row1, col1);
-        cin >> usr1;
-        cout << "conjugate = \n";
-        cout << usr1.conjugate() << endl;
-    }
-
-    cout << "Test6: convolution" << endl;
+    cout << "Test5: convolution" << endl;
     {
         cin >> row1 >> col1 >> channel1; 
         Matrix<double> src(row1, col1, channel1);
@@ -95,7 +88,15 @@ int main()
         cout << src.convolute(kernel) << endl;
     }
 
-    
+    cout << "Test6: conjugation" << endl;
+    {
+        cin >> row1 >> col1; 
+        Matrix<complex<double>> usr1(row1, col1);
+        cin >> usr1;
+        cout << "conjugate = \n";
+        cout << usr1.conjugate() << endl;
+    }
+
     MemoryDetech::instance().show();
 }
 
