@@ -93,6 +93,21 @@ int main()
     }
     putchar('\n');
 
+    // test7
+    row = read(), col = read();
+    printf("%d %d\n", row, col);
+    for (int i = 0; i < 10; i++)
+    {
+        printf("%f ", distr(eng));
+    }
+    printf("%d %d\n", row, col);
+    for (int i = 0; i < 10; i++)
+    {
+        printf("%f ", distr(eng));
+    }
+    putchar('\n');
+    
+
 }
 
 inline int read(){

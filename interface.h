@@ -2,6 +2,7 @@
 #define INTERFACE
 #include <opencv2/opencv.hpp>
 #include "Matrix.h"
+#include "SparseMatrix.h"
 
 namespace usr
 {

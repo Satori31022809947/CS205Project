@@ -102,7 +102,7 @@ class SparseMatrix {
         template <typename _T>
         operator usr::Matrix<_T>();
         bool operator==(const SparseMatrix& m)const;
-        Mp operator[](uint32 i){ return data.at(i); }
+        Mp& operator[](uint32 i){ return data.at(i); }
         template <class _T>
 		friend std::ostream& operator<<(std::ostream&, const SparseMatrix<_T>&);
 
@@ -575,7 +575,7 @@ std::ostream& operator<<(std::ostream& os, const SparseMatrix<_T>& m)
     {
         for (auto j = const_cast<SparseMatrix<_T>&>(m)[i].begin(); j != const_cast<SparseMatrix<_T>&>(m)[i].end(); j++)
         {
-            os << j->first.first << " " << j->first.second << " " << j->second << " ";
+            os << "(" << j->first.first << "," << j->first.second << ")=" << j->second << "\n";
         }
     }
     return os;   

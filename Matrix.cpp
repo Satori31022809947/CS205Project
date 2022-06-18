@@ -8,11 +8,14 @@
  */
 #include "interface.h"
 #include <iostream>
+#include <sys/time.h>
+#include <stdlib.h>
 using namespace std;
 using namespace usr;
 int main()
 {
     freopen("data.in", "r", stdin);
+    srand(time(NULL));
     uint32 row1, row2, col1, col2, channel1, channel2;
     cout << "Test1: basic operation" << endl;
     {
@@ -95,6 +98,68 @@ int main()
         cin >> usr1;
         cout << "conjugate = \n";
         cout << usr1.conjugate() << endl;
+    }
+
+    cout << "Test7: sparse matrix" << endl;
+    {
+        cin >> row1 >> col1;
+        SparseMatrix<double> usr1(row1, col1);
+        double t;
+        for (int i = max(row1, col1); i > max(row1, col1)-10; i--)
+        {
+            cin >> t;
+            usr1[0][make_pair(rand()%row1,rand()%col1)] = t;
+        }
+        cin >> row2 >> col2;
+        SparseMatrix<double> usr2(row2, col2);
+        for (int i = max(row1, col1); i > max(row1, col1)-10; i--)
+        {
+            cin >> t;
+            usr2[0][make_pair(rand()%row1,rand()%col1)] = t;
+        }    
+        Matrix<double> usr3 = usr1;
+        Matrix<double> usr4 = usr2;
+        struct timeval t1,t2;
+        double timeuse;
+        gettimeofday(&t1,NULL);
+        cout << "sparse matrix addition = \n";
+        cout << usr1 + usr2 << endl;
+        gettimeofday(&t2,NULL);
+        timeuse = (t2.tv_sec - t1.tv_sec) + (double)(t2.tv_usec - t1.tv_usec)/1000000.0;
+        cout<<"time = "<<timeuse << "s" <<endl;
+        gettimeofday(&t1,NULL);
+        cout << "general matrix addition = \n";
+        usr3 + usr4;
+        gettimeofday(&t2,NULL);
+        timeuse = (t2.tv_sec - t1.tv_sec) + (double)(t2.tv_usec - t1.tv_usec)/1000000.0;
+        cout<<"time = "<<timeuse << "s" <<endl;    
+        putchar('\n');    
+    }
+
+    cout << "Test8: conversion between usr and cv" << endl;
+    {
+        cv::Mat cv1(4,4,CV_32SC3, cv::Scalar(1,2,3));
+        cout << "cv::Mat(CV_32SC3) \n" << cv1 << endl << endl;
+        Matrix<double> usr1(1,1,1);
+        cout << "usr::Matrix<double> \n" << usr1 << endl;
+        cvTousr(cv1, usr1);
+        cout << "cvTousr \n" << "usr::Matrix<double> \n" << usr1 << endl;
+        cv::Matx<char, 4, 4> cv2;
+        cout << "cv::Matx \n" << cv2 << endl;
+        usrTocv(usr1, cv2);
+        cout << "usrTocv \n" << "cv::Matx \n" << cv2 << endl << endl;
+    }
+
+    cout << "Test9: exception" << endl;
+    {
+        Matrix<double> usr1(2,3,1);
+        Matrix<double> usr2(1,3,1);
+        usr1 + usr2;
+        usr1 * usr2;
+        usr2 = Matrix<double>(1,3,2);
+        usr1.inverse();
+        usr1.crossProduct(usr2);
+        usr1.convolute(usr2);
     }
 
     MemoryDetech::instance().show();
