@@ -29,7 +29,7 @@ class SparseMatrix {
         uint32 col;
         uint32 row;
         uint32 mod;
-        std::vector<std::map<std::pair<uint32,uint32>,T>>data;
+        std::vector<Mp>data;
         inline void allocate(const uint32 _row, const uint32 _col, const uint32 channel, const uint32 _mod);
         inline void release();
         SparseMatrix Addition(const SparseMatrix& src1, const SparseMatrix& src2) const;
@@ -81,7 +81,7 @@ class SparseMatrix {
         /**
          * @description: deep copy
          */
-        void clone(const SparseMatrix& m)const;
+        void clone(const SparseMatrix& m);
 
         SparseMatrix operator+(const SparseMatrix& b);
         SparseMatrix operator-(const SparseMatrix& b);
@@ -99,10 +99,10 @@ class SparseMatrix {
         void operator*=(const T t);
         template <typename _T>
         operator SparseMatrix<_T>();
+        template <typename _T>
+        operator usr::Matrix<_T>();
         bool operator==(const SparseMatrix& m)const;
-        T** operator[](uint32 i){ return data.at(i); }
-        template <class _T>
-        friend std::istream& operator>>(std::istream&, SparseMatrix<_T>&);
+        Mp operator[](uint32 i){ return data.at(i); }
         template <class _T>
 		friend std::ostream& operator<<(std::ostream&, const SparseMatrix<_T>&);
 
@@ -129,7 +129,6 @@ class SparseMatrix {
         SparseMatrix crossProduct(const SparseMatrix&)const;
 
         std::vector<std::complex<double>> eigenValue()const;
-        std::vector<Matrix<std::complex<double> >*> eigenVector()const;
         Matrix<std::complex<double>> eigenVector(std::complex<double>)const;
         SparseMatrix subMatrix(const Range& row=Range::all(), const Range& col=Range::all())const;
         SparseMatrix inverse()const;
@@ -147,10 +146,8 @@ inline void SparseMatrix<T>::allocate(const uint32 _row, const uint32 _col, cons
 {
     row = _row, col = _col, mod = _mod;
     for (int i=0;i<channel;i++){
-        Mp tem=new Mp;
-        data.push_back(tem);
+        data.push_back(Mp());
     }
-    data.clear();
 }
 
 template <class T>
@@ -179,18 +176,15 @@ inline void SparseMatrix<T>::release()
 {
     if (isEmpty())
         return;
-    for (int i=0;i<getChannel();i++){
-        delete data[i];
-    }
     data.clear();
     row = 0, col = 0, mod = 0;
 }
 
 template <class T>
-void SparseMatrix<T>::clone(const SparseMatrix<T>& m) const
+void SparseMatrix<T>::clone(const SparseMatrix<T>& m)
 {
     for (int k = 0; k < m.getChannel(); k++)
-        data[k] = m.data[k];
+        data[k] = const_cast<SparseMatrix<T>&>(m)[k];
 }
 
 template <class T>
@@ -209,11 +203,12 @@ SparseMatrix<T> SparseMatrix<T>::Addition(const SparseMatrix<T>& src1, const Spa
             uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
             SparseMatrix<T> rst(r, c, channel);
             for (int k = 0; k < channel; k++){
-                for (auto it=src1.data.begin();it!=src1.data.end();it++){
-                    rst.data[it->begin]+=it->second;
+                for (auto it=const_cast<SparseMatrix<T>&>(src1)[k].begin();it!=const_cast<SparseMatrix<T>&>(src1)[k].end();){
+                    rst[k][it->first]+=it->second;
+                    it++;
                 }
-                for (auto it=src2.data.begin();it!=src2.data.end();it++){
-                    rst.data[it->begin]+=it->second;
+                for (auto it=const_cast<SparseMatrix<T>&>(src2)[k].begin();it!=const_cast<SparseMatrix<T>&>(src2)[k].end();it++){
+                    rst[k][it->first]+=it->second;
                 }
             }
             return rst;
@@ -254,11 +249,11 @@ SparseMatrix<T> SparseMatrix<T>::Subtraction(const SparseMatrix<T>& src1, const 
             uint32 r = src1.getRow(), c = src1.getCol(), channel = src1.getChannel();
             SparseMatrix<T> rst(r, c, channel);
             for (int k = 0; k < channel; k++){
-                for (auto it=src1.data.begin();it!=src1.data.end();it++){
-                    rst.data[it->begin]+=it->second;
+                for (auto it=const_cast<SparseMatrix<T>&>(src1)[k].begin();it!=const_cast<SparseMatrix<T>&>(src1)[k].end();it++){
+                    rst[k][it->first]+=it->second;
                 }
-                for (auto it=src2.data.begin();it!=src2.data.end();it++){
-                    rst.data[it->begin]-=it->second;
+                for (auto it=const_cast<SparseMatrix<T>&>(src2)[k].begin();it!=const_cast<SparseMatrix<T>&>(src2)[k].end();it++){
+                    rst[k][it->first]-=it->second;
                 }
             }
             return rst;
@@ -553,28 +548,37 @@ SparseMatrix<T>::operator SparseMatrix<_T>()
 {
     SparseMatrix<_T> t(row, col, getChannel());
     for (int i = 0; i < getChannel(); i++){
-        for (auto it=data.begin();it!=data.end();it++){
+        for (auto it=data[i].begin();it!=data[i].end();it++){
             t[i][it->first]=static_cast<_T>(it->second);
         }
+    }
+    return t;
+}
 
+template <class T>
+template <typename _T>
+SparseMatrix<T>::operator Matrix<_T>()
+{
+    Matrix<_T> t(row, col, getChannel());
+    for (int i = 0; i < getChannel(); i++){
+        for (auto it=data[i].begin();it!=data[i].end();it++){
+            t[i][it->first.first][it->first.second]=static_cast<_T>(it->second);
+        }
     }
     return t;
 }
 
 template <class _T>
-std::istream& operator>>(std::istream& is, SparseMatrix<_T>& m)
-{
-    Matrix<_T>a=m;
-    is>>a;
-    return is;
-}
-
-template <class _T>
 std::ostream& operator<<(std::ostream& os, const SparseMatrix<_T>& m)
 {
-    Matrix<_T>a=m;
-    os<<a;
-    return os;
+    for (int i = 0; i < m.getChannel(); i++)
+    {
+        for (auto j = const_cast<SparseMatrix<_T>&>(m)[i].begin(); j != const_cast<SparseMatrix<_T>&>(m)[i].end(); j++)
+        {
+            os << j->first.first << " " << j->first.second << " " << j->second << " ";
+        }
+    }
+    return os;   
 }
 
 
@@ -1096,26 +1100,6 @@ std::vector<std::complex<double>> SparseMatrix<T>::eigenValue() const
         std::cerr << "Fatal: " << e.what() << '\n';
     }
     return std::vector<std::complex<double>>();
-}
-
-
-template <class T>
-std::vector<Matrix<std::complex<double>>*> SparseMatrix<T>::eigenVector()const{
-    
-    try{
-        Matrix<T> a=*this;
-        return a.eigenVector();
-    }
-    catch(const WrongEigenValueException& e)
-    {
-        std::cerr << "WrongEigenValueException: " << e.what() << '\n';
-    }
-    catch(const Exception& e)
-    {
-        std::cerr << "Fatal: " << e.what() << '\n';
-    }
-    std::vector<Matrix<std::complex<double>>*>res;
-    return res;
 }
 
 template <class T>
