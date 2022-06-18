@@ -840,7 +840,7 @@ T Matrix<T>::determinant()const
                 uint32 r = row, c = col;
                 Matrix<T> rst(r,c);
                 rst = (*this);
-                T res=1;
+                T res=1,res_=1;
                 for (int i = 0; i < r; i++)
                 {
                     int id=-1;
@@ -866,6 +866,7 @@ T Matrix<T>::determinant()const
                     res = res * rst[0][i][i];
                     for (int j = i + 1; j < r; j++)
                     {
+                        res_*=rst[0][i][i];
                         for (int k = c - 1; k >= i; k--){
                             rst[0][j][k] *= rst[0][i][i];
                         }
@@ -876,7 +877,7 @@ T Matrix<T>::determinant()const
                     }
                 }
                 //std::cerr<<"-------------------"<<cerr<<std::endl<<rst<<std::endl;
-                return res;
+                return res/res_;
             }
             #else 
             {
